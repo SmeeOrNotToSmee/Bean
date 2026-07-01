@@ -136,14 +136,11 @@
           </div>
 
           <div id="tab-history" role="tabpanel" hidden>
-            <div class="toolrow" style="justify-content:flex-end; gap:8px; margin-bottom:10px;">
-              <button type="button" class="btn" id="historyViewList" aria-pressed="true">📜 Chronological</button>
-              <button type="button" class="btn" id="historyViewEmployees" aria-pressed="false">👥 By Employee</button>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+              <button type="button" class="btn" id="historyViewList" aria-pressed="true" style="width:100%;">📜 Chronological</button>
+              <button type="button" class="btn" id="historyViewEmployees" aria-pressed="false" style="width:100%;">👥 By Employee</button>
             </div>
             <div id="historyList" class="summary" style="gap:12px;"></div>
-            <div class="right-actions" style="margin-top:12px;">
-              <button class="btn ghost" id="clearHistoryBtn">Clear History</button>
-            </div>
           </div>
 
           <div style="margin-top:auto; padding-top:16px; border-top:1px solid var(--border);">
@@ -174,7 +171,7 @@
             <div id="discountButtons" class="discount-buttons">
               <button type="button" class="btn discount-btn" data-pct="0">0%</button>
               <button type="button" class="btn discount-btn" data-pct="10">10%</button>
-              <button type="button" class="btn discount-btn" data-pct="20">20%</button>
+              <button type="button" class="btn discount-btn" data-pct="20">VIP</button>
             </div>
           </div>
 
@@ -298,13 +295,13 @@
     // ---------- Data ----------
     const MENU = {
       classic: [
-        { id:'bev-bean', name:'☕ Bean Coffee',   price:40,  type:'drink' },
-        { id:'bev-capp', name:'☕ Cappuccino',    price:30,  type:'drink' },
-        { id:'bev-esp',  name:'⚡ Espresso',      price:60,  type:'drink' },
-        { id:'bev-iced', name:'🧊 Iced Latte',    price:30,  type:'drink' },
-        { id:'bev-choc', name:'🍫 Hot Chocolate', price:85,  type:'drink' },
-        { id:'bev-matcha',  name:'🍵 Matcha Latte',  price:55,  type:'drink' },
-        { id:'ex-lemon',  name:'🥤 Pink Lemonade', price:50,  type:'drink', isDrink:true },
+        { id:'bev-bean', name:'☕ Bean Coffee',   price:15,  type:'drink' },
+        { id:'bev-capp', name:'☕ Cappuccino',    price:20,  type:'drink' },
+        { id:'bev-esp',  name:'⚡ Espresso',      price:36,  type:'drink' },
+        { id:'bev-iced', name:'🧊 Iced Latte',    price:26,  type:'drink' },
+        { id:'bev-choc', name:'🍫 Hot Chocolate', price:46,  type:'drink' },
+        { id:'bev-matcha',  name:'🍵 Matcha Latte',  price:30,  type:'drink' },
+        { id:'ex-lemon',  name:'🥤 Pink Lemonade', price:34,  type:'drink', isDrink:true },
       ],
       bundles: [
         {
@@ -375,37 +372,40 @@
         },
       ],
       iceCream: [
-        { id:'ex-ice-van',   name:'🍦 Vanilla Ice Cream',      price:70, type:'extra' },
-        { id:'ex-ice-choc',  name:'🍫🍦 Chocolate Ice Cream',    price:70, type:'extra' },
-        { id:'ex-ice-apple', name:'🍏🍦 Apple Ice Cream',        price:70, type:'extra' },
-        { id:'ex-ice-banana',name:'🍌🍦 Banana Ice Cream',       price:70, type:'extra' },
-        { id:'ex-ice-mango', name:'🥭🍦 Mango Ice Cream',        price:70, type:'extra' },
-        { id:'ex-ice-pom',   name:'❤️🍦 Pomegranate Ice Cream',  price:70, type:'extra' },
-        { id:'ex-ice-water', name:'🍉🍦 Watermelon Ice Cream',   price:70, type:'extra' },
-        { id:'ex-ice-lemon', name:'🍋🍦 Lemon Ice Cream',        price:70, type:'extra' },
-        { id:'ex-ice-straw', name:'🍓🍦 Strawberry Ice Cream',   price:70, type:'extra' },
+        { id:'ex-ice-van',   name:'🍦 Vanilla Ice Cream',      price:36, type:'extra' },
+        { id:'ex-ice-choc',  name:'🍫🍦 Chocolate Ice Cream',    price:36, type:'extra' },
+        { id:'ex-ice-apple', name:'🍏🍦 Apple Ice Cream',        price:36, type:'extra' },
+        { id:'ex-ice-banana',name:'🍌🍦 Banana Ice Cream',       price:36, type:'extra' },
+        { id:'ex-ice-mango', name:'🥭🍦 Mango Ice Cream',        price:42, type:'extra' },
+        { id:'ex-ice-pom',   name:'❤️🍦 Pomegranate Ice Cream',  price:42, type:'extra' },
+        { id:'ex-ice-water', name:'🍉🍦 Watermelon Ice Cream',   price:42, type:'extra' },
+        { id:'ex-ice-lemon', name:'🍋🍦 Lemon Ice Cream',        price:36, type:'extra' },
+        { id:'ex-ice-straw', name:'🍓🍦 Strawberry Ice Cream',   price:36, type:'extra' },
+        { id:'ex-ice-pine',  name:'🍍🍦 Pineapple Ice Cream',    price:42, type:'extra' },
       ],
       extras: [
-        { id:'ex-cup',    name:'🧁 Cupcake',        price:30,  type:'extra' },
-        { id:'ex-cookie', name:'🍪 Cream Cookie',   price:40,  type:'extra' },
-        { id:'ex-donut',  name:'🍩 Donut',          price:25,  type:'extra' },
-        { id:'ex-waffle', name:'🧇 Wonder Waffle',  price:25,  type:'extra' },
-        { id:'ex-waffle-strawnana', name:'🧇🍓🍌 Strawberry-Banana Waffle', price:35, type:'extra' },
-        { id:'ex-waffle-cinapple',  name:'🧇🌰🍏 Cinnamon-Apple Waffle',    price:35, type:'extra' },
-        { id:'ex-waffle-straw',     name:'🧇🍓 Strawberry Waffle',          price:35, type:'extra' },
-        { id:'ex-waffle-choc',      name:'🧇🍫 Chocolate Waffle',           price:35, type:'extra' },
-        { id:'ex-cake-berry', name:'🍓 Berry Cake',      price:120, type:'extra', isCake:true },
-        { id:'ex-cake-lemon', name:'🍋 Lemon Cake',      price:120, type:'extra', isCake:true },
-        { id:'ex-cake-choc',  name:'🍫 Chocolate Cake',  price:120, type:'extra', isCake:true },
-        { id:'ex-cheese', name:'🍰 Cheesecake',     price:30,  type:'extra' },
-        { id:'ex-kinder', name:'🥚 Kinder Egg',     price:1500, type:'extra' },
-        { id:'ex-lunch',  name:'🍱 Lunch Box',      price:440,  type:'extra' },
+        { id:'ex-cup',    name:'🧁 Cupcake',        price:18,  type:'extra' },
+        { id:'ex-cookie', name:'🍪 Cream Cookie',   price:20,  type:'extra' },
+        { id:'ex-donut',  name:'🍩 Donut',          price:16,  type:'extra' },
+        { id:'ex-waffle', name:'🧇 Wonder Waffle',  price:20,  type:'extra' },
+        { id:'ex-waffle-strawnana', name:'🧇🍓🍌 Strawberry-Banana Waffle', price:42,  type:'extra' },
+        { id:'ex-waffle-cinapple',  name:'🧇🌰🍏 Cinnamon-Apple Waffle',    price:42,  type:'extra' },
+        { id:'ex-waffle-straw',     name:'🧇🍓 Strawberry Waffle',          price:42,  type:'extra' },
+        { id:'ex-waffle-choc',      name:'🧇🍫 Chocolate Waffle',           price:42,  type:'extra' },
+        { id:'ex-cake-berry', name:'🍓 Berry Cake',      price:70, type:'extra', isCake:true },
+        { id:'ex-cake-lemon', name:'🍋 Lemon Cake',      price:70, type:'extra', isCake:true },
+        { id:'ex-cake-choc',  name:'🍫 Chocolate Cake',  price:70, type:'extra', isCake:true },
+        { id:'ex-cheese', name:'🍰 Cheesecake',     price:24,  type:'extra' },
+        { id:'ex-kinder', name:'🥚 Kinder Egg',     price:1000, type:'extra' },
+        { id:'ex-lunch',  name:'🍱 Lunch Box',      price:300,  type:'extra' },
+        { id:'ex-cocobar', name:'🍫 Coco Bar',      price:32,  type:'extra' },
       ],
       specialty:[], deals:[], packs:[],
     };
 
     const RECIPE_MAP = {
       'bev-bean': {'Water':2,'Coffee bag':1},
+      'bev-capp': {'Coffee bag':2,'Water':2,'Milk':1},
       'bev-iced': {'Coffee bag':1,'Sugar':1,'Milk':1,'Water':1},
       'bev-esp' : {'Coffee bag':2,'Water':2},
       'bev-choc': {'Milk':2,'Sugar':2,'Cocoa Powder':4},
@@ -419,6 +419,7 @@
       'ex-ice-water': {'Ice Cream Cone':1,'Milk':1,'Watermelon':1},
       'ex-ice-lemon': {'Ice Cream Cone':1,'Milk':1,'Lemon':1},
       'ex-ice-straw' : {'Ice Cream Cone':1,'Milk':1,'Strawberry':2},
+      'ex-ice-pine'  : {'Ice Cream Cone':1,'Pineapple':1,'Milk':1},
       'ex-cake-berry': {'Flour':1,'Sugar':1,'Milk':1,'Egg':1,'Cherry':1,'Strawberry':1},
       'ex-cake-lemon': {'Flour':1,'Sugar':1,'Milk':1,'Egg':1,'Lemon':2},
       'ex-cake-choc' : {'Flour':1,'Sugar':1,'Milk':1,'Egg':1,'Cocoa Powder':2},
@@ -426,6 +427,25 @@
       'ex-waffle-cinapple' : {'Wonder Waffle':1,'Cinnamon':1,'Apple':1},
       'ex-waffle-straw'    : {'Wonder Waffle':1,'Strawberry':1},
       'ex-waffle-choc'     : {'Wonder Waffle':1,'Cocoa Powder':1},
+      'og-bag'             : {'Bag':1},
+      'ex-cocobar'         : {'Cocoa Powder':2,'Milk':1},
+    };
+
+    // These drinks are crafted 2-at-a-time — the RECIPE_MAP amounts above already
+    // represent one full craft/batch (yielding 2 drinks), not one single drink.
+    const BATCH_YIELD = {
+      'bev-bean': 2,  // Coffee
+      'bev-capp': 2,  // Cappuccino
+      'bev-esp' : 2,  // Espresso
+      'bev-iced': 2,  // Iced Latte
+    };
+    function batchesFor(id, qty){
+      const yieldPer = BATCH_YIELD[id] || 1;
+      return Math.ceil(qty / yieldPer);
+    }
+
+    // Per-unit ingredient cost (not a menu price — used for the ingredient/cost list).
+    const INGREDIENT_PRICES = {
     };
 
     const currency = n => `$${n.toFixed(2)}`;
@@ -494,12 +514,12 @@
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { fetch: artifactSafeFetch } });
             resolve(supabaseClient);
           }catch(e){
-            console.error('Supabase client init failed', e);
+            console.warn('Supabase client init failed', e);
             resolve(null);
           }
         };
         script.onerror = () => {
-          console.error('Failed to load Supabase SDK from CDN');
+          console.warn('Failed to load Supabase SDK from CDN');
           resolve(null);
         };
         document.head.appendChild(script);
@@ -517,7 +537,7 @@
         total: entry.total,
         discount: entry.discountPct
       });
-      if(error) console.error('Supabase push failed', error);
+      if(error) console.warn('Supabase push failed', error);
     }
 
     async function deleteHistoryFromStorage(entry){
@@ -525,14 +545,14 @@
       if(!client) return;
       const iso = new Date(entry.id).toISOString();
       const { error } = await client.from('Bean').delete().eq('date', iso);
-      if(error) console.error('Supabase delete failed', error);
+      if(error) console.warn('Supabase delete failed', error);
     }
 
     async function fetchHistoryFromStorage(){
       const client = await loadSupabaseClient();
       if(!client) return null;
       const { data, error } = await client.from('Bean').select('*').order('date', { ascending:false });
-      if(error){ console.error('Supabase fetch failed', error); return null; }
+      if(error){ console.warn('Supabase fetch failed', error); return null; }
       // Postgres numeric/decimal columns come back as strings over PostgREST
       // (to avoid float precision loss) — coerce them back to JS numbers.
       return (data||[]).map(r=>({
@@ -557,7 +577,7 @@
     }
 
     function getMealDrinkPool(){
-      return MENU.classic.filter(x=>['bev-bean','bev-esp','bev-iced','bev-choc','bev-matcha','ex-lemon'].includes(x.id));
+      return MENU.classic.filter(x=>['bev-bean','bev-capp','bev-esp','bev-iced','bev-choc','bev-matcha','ex-lemon'].includes(x.id));
     }
 
     function getCakePool(){ return MENU.extras.filter(x=>x.id.startsWith('ex-cake-')); }
@@ -699,9 +719,14 @@
     });
 
     // ---------- Totals & manual discount ----------
+    function discountableSubtotal(cart){
+      // On-The-Go Bag is excluded from manual discounts.
+      return cart.reduce((s,l)=> l.id==='og-bag' ? s : s + l.unitPrice*l.qty, 0);
+    }
+
     function renderTotals(){
       const subtotal = state.cart.reduce((s,l)=>s + l.unitPrice*l.qty, 0);
-      const manual = +(subtotal * (state.discountPct/100)).toFixed(2);
+      const manual = +(discountableSubtotal(state.cart) * (state.discountPct/100)).toFixed(2);
       const deliveryFee = state.fulfillment==='delivery' ? (ZONE_FEES[state.deliveryZone]||0) : 0;
       const total = subtotal + deliveryFee - manual;
 
@@ -810,9 +835,6 @@
 
       list.innerHTML = state.history.map(historyEntryHTML).join('');
     }
-    document.getElementById('clearHistoryBtn').addEventListener('click',()=>{
-      showConfirm('Clear all saved orders? This cannot be undone.', ()=>{ state.history=[]; renderHistory(); }, '⚠️ Clear History');
-    });
 
     const historyViewListBtn = document.getElementById('historyViewList');
     const historyViewEmployeesBtn = document.getElementById('historyViewEmployees');
@@ -1220,12 +1242,17 @@
 
       state.cart.forEach(line=>{
         if(RECIPE_MAP[line.id]){
-          for(const [ing,c] of Object.entries(RECIPE_MAP[line.id])) add(ing, c*line.qty);
+          const batches = batchesFor(line.id, line.qty);
+          for(const [ing,c] of Object.entries(RECIPE_MAP[line.id])) add(ing, c*batches);
         }
         if(line.drinks){
           for(const [drinkId,c] of Object.entries(line.drinks)){
             const rec = RECIPE_MAP[drinkId];
-            if(rec) for(const [ing,n] of Object.entries(rec)) add(ing, n*c*(line.qty||1));
+            if(rec){
+              const totalDrinks = c*(line.qty||1);
+              const batches = batchesFor(drinkId, totalDrinks);
+              for(const [ing,n] of Object.entries(rec)) add(ing, n*batches);
+            }
           }
         }
         if(line.id==='sp-hay' && line.cakes){
@@ -1242,7 +1269,11 @@
       const wrap=document.getElementById('ingredientList');
       const entries=Object.entries(aggregateIngredients()).sort((a,b)=>b[1]-a[1]);
       if(!entries.length){ wrap.innerHTML='<div class="muted">No ingredients yet. Add items to the cart.</div>'; return; }
-      wrap.innerHTML = entries.map(([n,c])=>`<div class="ing-list"><div>${n}</div><div><strong>x${c}</strong></div></div>`).join('');
+      wrap.innerHTML = entries.map(([n,c])=>{
+        const price = INGREDIENT_PRICES[n];
+        const costHTML = price!=null ? ` <span class="small">(${currency(price*c)})</span>` : '';
+        return `<div class="ing-list"><div>${n}</div><div><strong>x${c}</strong>${costHTML}</div></div>`;
+      }).join('');
     }
 
     // ---------- Item Totals (aggregated quantities, for collecting the order) ----------
@@ -1283,7 +1314,7 @@
         return;
       }
       const subtotal=state.cart.reduce((s,l)=>s+l.unitPrice*l.qty,0);
-      const manual=+(subtotal*(state.discountPct/100)).toFixed(2);
+      const manual=+(discountableSubtotal(state.cart)*(state.discountPct/100)).toFixed(2);
       const fee=state.fulfillment==='delivery'?(ZONE_FEES[state.deliveryZone]||0):0;
       const total=+(subtotal+fee-manual).toFixed(2);
       const entry={
