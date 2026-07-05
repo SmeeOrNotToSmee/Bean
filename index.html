@@ -603,6 +603,46 @@
       cateringCart:[], cateringDiscountPct:0, cateringFulfillment:'pickup', cateringDeliveryZone:'city'
     };
 
+    // ---------- Local persistence (cart/discount/fulfillment/employee/theme survive a refresh) ----------
+    const STATE_KEY = 'beanmachine_state_v1';
+
+    function persistState(){
+      try{
+        localStorage.setItem(STATE_KEY, JSON.stringify({
+          cart: state.cart,
+          discountPct: state.discountPct,
+          fulfillment: state.fulfillment,
+          deliveryZone: state.deliveryZone,
+          cateringCart: state.cateringCart,
+          cateringDiscountPct: state.cateringDiscountPct,
+          cateringFulfillment: state.cateringFulfillment,
+          cateringDeliveryZone: state.cateringDeliveryZone,
+          mode: state.mode,
+          employeeName: document.getElementById('employeeName')?.value || '',
+          theme: document.documentElement.getAttribute('data-theme') || 'dark'
+        }));
+      }catch(e){ console.warn('Persist failed', e); }
+    }
+
+    let savedEmployeeName = '';
+    let savedTheme = 'dark';
+    (function loadPersistedState(){
+      try{
+        const saved = JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
+        if(Array.isArray(saved.cart)) state.cart = saved.cart;
+        if(typeof saved.discountPct === 'number') state.discountPct = saved.discountPct;
+        if(saved.fulfillment) state.fulfillment = saved.fulfillment;
+        if(saved.deliveryZone) state.deliveryZone = saved.deliveryZone;
+        if(Array.isArray(saved.cateringCart)) state.cateringCart = saved.cateringCart;
+        if(typeof saved.cateringDiscountPct === 'number') state.cateringDiscountPct = saved.cateringDiscountPct;
+        if(saved.cateringFulfillment) state.cateringFulfillment = saved.cateringFulfillment;
+        if(saved.cateringDeliveryZone) state.cateringDeliveryZone = saved.cateringDeliveryZone;
+        if(saved.mode) state.mode = saved.mode;
+        if(saved.employeeName) savedEmployeeName = saved.employeeName;
+        if(saved.theme) savedTheme = saved.theme;
+      }catch(e){ /* ignore malformed/missing saved state */ }
+    })();
+
     // ---------- Supabase (order history) ----------
     const SUPABASE_URL = 'https://gpaqlehknskrcthyaapo.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwYXFsZWhrbnNrcmN0aHlhYXBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjQwMjEsImV4cCI6MjA5ODI0MDAyMX0.pVsGNoYVNsh6w0RTTCajtveVJ12wgxxgP1Vqhl2EOxQ';
@@ -990,6 +1030,7 @@
       const row = document.getElementById('deliveryRowCat');
       if(deliveryFee>0){ row.style.display='flex'; document.getElementById('deliveryFeeCat').textContent = currency(deliveryFee); }
       else { row.style.display='none'; document.getElementById('deliveryFeeCat').textContent = currency(0); }
+      persistState();
     }
 
     const discountCatBtns = document.querySelectorAll('.discount-cat-btn');
@@ -1189,6 +1230,7 @@
       const row = document.getElementById('deliveryRow');
       if(deliveryFee>0){ row.style.display='flex'; document.getElementById('deliveryFee').textContent = currency(deliveryFee); }
       else { row.style.display='none'; document.getElementById('deliveryFee').textContent = currency(0); }
+      persistState();
     }
 
     const discountBtns = document.querySelectorAll('.discount-btn');
@@ -2000,7 +2042,7 @@
     document.getElementById('resetBtn2').addEventListener('click',resetAll);
 
     const themeBtn=document.getElementById('themeBtn');
-    let currentTheme = 'dark';
+    let currentTheme = savedTheme;
     function applyTheme(t){
       currentTheme = t;
       document.documentElement.setAttribute('data-theme',t);
@@ -2010,13 +2052,15 @@
     applyTheme(currentTheme);
     themeBtn.addEventListener('click',()=>{
       applyTheme(currentTheme==='light'?'dark':'light');
+      persistState();
     });
 
     const employeeNameInput=document.getElementById('employeeName');
-    let rememberedEmployeeName = '';
+    let rememberedEmployeeName = savedEmployeeName;
     employeeNameInput.value = rememberedEmployeeName;
     employeeNameInput.addEventListener('input',()=>{
       rememberedEmployeeName = employeeNameInput.value;
+      persistState();
     });
 
     // ---------- Init: render everything on page load ----------
