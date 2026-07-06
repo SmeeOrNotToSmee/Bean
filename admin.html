@@ -229,6 +229,33 @@
     </div>
   </dialog>
 
+  <dialog id="adminAlertModal" style="width:min(440px,94vw);">
+    <div class="modal-header">
+      <strong id="adminAlertTitle">Notice</strong>
+      <button class="btn" id="closeAdminAlertModal" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="adminAlertMessage"></div>
+      <div class="toolrow" style="justify-content:flex-end;">
+        <button class="btn primary" id="adminAlertOkBtn">OK</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="adminConfirmModal" style="width:min(440px,94vw);">
+    <div class="modal-header">
+      <strong id="adminConfirmTitle">Please Confirm</strong>
+      <button class="btn" id="closeAdminConfirmModal" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="adminConfirmMessage"></div>
+      <div class="toolrow" style="justify-content:flex-end;">
+        <button class="btn" id="adminConfirmCancelBtn">Cancel</button>
+        <button class="btn primary" id="adminConfirmOkBtn" style="background:#e63946;">Confirm</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="bundleEditModal" style="width:min(560px,94vw);">
     <div class="modal-header">
       <strong id="bundleEditModalTitle">Edit Bundle</strong>
@@ -240,6 +267,39 @@
 
 <script src="menu-data.js"></script>
 <script>
+  // ---------- Generic alert/confirm dialogs (no native browser popups anywhere) ----------
+  const adminAlertModal = document.getElementById('adminAlertModal');
+  const adminAlertTitle = document.getElementById('adminAlertTitle');
+  const adminAlertMessage = document.getElementById('adminAlertMessage');
+
+  function showAdminAlert(message, title = 'Notice'){
+    adminAlertTitle.textContent = title;
+    adminAlertMessage.textContent = message;
+    adminAlertModal.showModal();
+  }
+  document.getElementById('closeAdminAlertModal').addEventListener('click', () => adminAlertModal.close());
+  document.getElementById('adminAlertOkBtn').addEventListener('click', () => adminAlertModal.close());
+
+  const adminConfirmModal = document.getElementById('adminConfirmModal');
+  const adminConfirmTitle = document.getElementById('adminConfirmTitle');
+  const adminConfirmMessage = document.getElementById('adminConfirmMessage');
+  let pendingAdminConfirmCallback = null;
+
+  function showAdminConfirm(message, onConfirm, title = 'Please Confirm'){
+    adminConfirmTitle.textContent = title;
+    adminConfirmMessage.textContent = message;
+    pendingAdminConfirmCallback = onConfirm;
+    adminConfirmModal.showModal();
+  }
+  document.getElementById('closeAdminConfirmModal').addEventListener('click', () => { pendingAdminConfirmCallback = null; adminConfirmModal.close(); });
+  document.getElementById('adminConfirmCancelBtn').addEventListener('click', () => { pendingAdminConfirmCallback = null; adminConfirmModal.close(); });
+  document.getElementById('adminConfirmOkBtn').addEventListener('click', () => {
+    const cb = pendingAdminConfirmCallback;
+    pendingAdminConfirmCallback = null;
+    adminConfirmModal.close();
+    if(typeof cb === 'function') cb();
+  });
+
   // ---------- Discord Owner-login gate ----------
   const DISCORD_CLIENT_ID = '1523389009227808848';
   const DISCORD_REDIRECT_URI = 'https://gpaqlehknskrcthyaapo.supabase.co/functions/v1/discord-auth';
@@ -372,7 +432,7 @@
     }catch(err){
       console.error('Failed to load shared menu state:', err);
       stateLoadFailed = true;
-      alert('Could not load the shared menu data from the server. You can still browse, but changes may not save correctly until this is fixed — check your connection and try refreshing.');
+      showAdminAlert('Could not load the shared menu data from the server. You can still browse, but changes may not save correctly until this is fixed — check your connection and try refreshing.', 'Connection Issue');
     }
 
     // Working copies for the Shop Settings editor need to reflect whatever we just loaded.
@@ -403,13 +463,13 @@
       });
       const data = await res.json().catch(() => ({}));
       if(!res.ok){
-        alert(data.error || 'Failed to save your change to the server. It may not show up for other devices — try again, and log in again if this keeps happening.');
+        showAdminAlert(data.error || 'Failed to save your change to the server. It may not show up for other devices — try again, and log in again if this keeps happening.', 'Save Failed');
         return false;
       }
       return true;
     }catch(err){
       console.error('Failed to sync menu state:', err);
-      alert('Could not reach the server to save your change. Check your connection and try again.');
+      showAdminAlert('Could not reach the server to save your change. Check your connection and try again.', 'Save Failed');
       return false;
     }
   }
@@ -428,12 +488,13 @@
   }
 
   function deleteItem(id){
-    if(!confirm('Delete this item? It will disappear from the calculator, but you can restore it anytime from the "Deleted Items" list below.')) return;
-    if(!deletedItemIds.includes(id)) deletedItemIds.push(id);
-    saveDeletedItemIds();
-    renderDeletedList();
-    renderEditList();
-    renderBundlesList();
+    showAdminConfirm('Delete this item? It will disappear from the calculator, but you can restore it anytime from the "Deleted Items" list below.', () => {
+      if(!deletedItemIds.includes(id)) deletedItemIds.push(id);
+      saveDeletedItemIds();
+      renderDeletedList();
+      renderEditList();
+      renderBundlesList();
+    }, 'Delete Item?');
   }
 
   function restoreItem(id){
@@ -465,16 +526,45 @@
     list.innerHTML = deletedItemIds.map(id => {
       const raw = findAnyMenuItem(id);
       const name = raw ? effectiveItem(raw).name : id;
+      const isCustom = id.startsWith('custom-');
       return `
         <div class="custom-row">
           <strong>${name}</strong>
-          <button class="btn" data-restore="${id}">Restore</button>
+          <div class="toolrow" style="gap:8px;">
+            <button class="btn" data-restore="${id}">Restore</button>
+            ${isCustom ? `<button class="btn danger" data-purge="${id}">Delete Permanently</button>` : ''}
+          </div>
         </div>`;
     }).join('');
 
     list.querySelectorAll('[data-restore]').forEach(btn => {
       btn.addEventListener('click', () => restoreItem(btn.dataset.restore));
     });
+
+    list.querySelectorAll('[data-purge]').forEach(btn => {
+      btn.addEventListener('click', () => purgeCustomItem(btn.dataset.purge));
+    });
+  }
+
+  function purgeCustomItem(id){
+    showAdminConfirm('Permanently delete this item? Unlike a normal delete, this cannot be undone or restored — it will be completely removed.', () => {
+      const entryIdx = customMenuItems.findIndex(e => e.item.id === id);
+      if(entryIdx !== -1){
+        const entry = customMenuItems[entryIdx];
+        if(MENU[entry.category]){
+          const pos = MENU[entry.category].findIndex(i => i.id === id);
+          if(pos !== -1) MENU[entry.category].splice(pos, 1);
+        }
+        customMenuItems.splice(entryIdx, 1);
+      }
+      deletedItemIds = deletedItemIds.filter(x => x !== id);
+      delete menuOverrides[id];
+      syncStateToServer();
+      renderDeletedList();
+      renderCustomList();
+      renderEditList();
+      renderBundlesList();
+    }, 'Delete Permanently?');
   }
 
   const CATEGORY_LABELS = {
@@ -952,18 +1042,19 @@
     workingDeliveryZones = cleanZones.map(z => ({...z}));
     renderDiscountTiersList();
     renderDeliveryZonesList();
-    if(ok) alert('Shop settings saved for everyone.');
+    if(ok) showAdminAlert('Shop settings saved for everyone.', 'Saved');
   });
 
-  document.getElementById('resetShopSettingsBtn').addEventListener('click', async () => {
-    if(!confirm('Reset discount tiers and delivery zones back to the original defaults for everyone?')) return;
-    SHOP_SETTINGS.discountTiers = JSON.parse(JSON.stringify(DEFAULT_SHOP_SETTINGS.discountTiers));
-    SHOP_SETTINGS.deliveryZones = JSON.parse(JSON.stringify(DEFAULT_SHOP_SETTINGS.deliveryZones));
-    await syncStateToServer();
-    workingDiscountTiers = SHOP_SETTINGS.discountTiers.map(t => ({...t}));
-    workingDeliveryZones = SHOP_SETTINGS.deliveryZones.map(z => ({...z}));
-    renderDiscountTiersList();
-    renderDeliveryZonesList();
+  document.getElementById('resetShopSettingsBtn').addEventListener('click', () => {
+    showAdminConfirm('Reset discount tiers and delivery zones back to the original defaults for everyone?', async () => {
+      SHOP_SETTINGS.discountTiers = JSON.parse(JSON.stringify(DEFAULT_SHOP_SETTINGS.discountTiers));
+      SHOP_SETTINGS.deliveryZones = JSON.parse(JSON.stringify(DEFAULT_SHOP_SETTINGS.deliveryZones));
+      await syncStateToServer();
+      workingDiscountTiers = SHOP_SETTINGS.discountTiers.map(t => ({...t}));
+      workingDeliveryZones = SHOP_SETTINGS.deliveryZones.map(z => ({...z}));
+      renderDiscountTiersList();
+      renderDeliveryZonesList();
+    }, 'Reset Shop Settings?');
   });
 
   // Initial data load: fetch the shared state from Supabase, then render everything.
