@@ -180,7 +180,13 @@
       </aside>
 
       <aside class="panel">
-        <h2 id="checkoutPanelTitle">Checkout</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:16px 18px;border-bottom:1px solid var(--border);">
+          <h2 id="checkoutPanelTitle" style="margin:0;padding:0;border:none;">Checkout</h2>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="text" id="loyaltyCid" placeholder="Loyalty Num: CID" inputmode="numeric" maxlength="8" style="padding:7px 10px;border-radius:12px;border:1px solid var(--border);background:var(--chip);color:var(--text);font-size:.85rem;width:140px;">
+            <div id="loyaltyStatus" class="muted" style="font-size:.78rem;"></div>
+          </div>
+        </div>
         <div class="content">
           <div id="checkout-regular">
             <div class="option" style="margin-bottom:10px;">
@@ -396,6 +402,20 @@
       <div class="toolrow" style="justify-content:flex-end;gap:10px;">
         <button class="btn" id="cancelRemoveMealBtn">Cancel</button>
         <button class="btn primary" id="confirmRemoveMealBtn" style="background:#e63946;">Remove Meal</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="redeemLoyaltyModal">
+    <div class="modal-header">
+      <strong>🎉 Redeem Reward</strong>
+      <button class="btn" id="closeRedeemLoyaltyModal" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="redeemLoyaltyMessage">Redeem a free meal for this customer? This will use 5 of their stamps.</div>
+      <div class="toolrow" style="justify-content:flex-end;gap:10px;">
+        <button class="btn" id="cancelRedeemLoyaltyBtn">Cancel</button>
+        <button class="btn primary" id="confirmRedeemLoyaltyBtn">Redeem Reward</button>
       </div>
     </div>
   </dialog>
@@ -1834,10 +1854,112 @@
     document.getElementById('openExtrasBtn').addEventListener('click',()=>document.getElementById('extrasModal').showModal());
     document.getElementById('closeExtras').addEventListener('click',()=>document.getElementById('extrasModal').close());
 
-    // ---------- Render-all / Checkout / Reset ----------
+    // ---------- Loyalty (CID stamp card: 1 stamp per qualifying order, 5 stamps = free meal) ----------
+    const loyaltyCidInput = document.getElementById('loyaltyCid');
+    const loyaltyStatusEl = document.getElementById('loyaltyStatus');
+    let loyaltyDebounce = null;
+    let pendingRedeemCid = null;
+
+    function getValidLoyaltyCid(){
+      const val = (loyaltyCidInput.value || '').trim();
+      return /^\d{1,8}$/.test(val) ? val : null;
+    }
+
+    async function fetchLoyaltyStamps(cid){
+      try{
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/bean_loyalty?cid=eq.${encodeURIComponent(cid)}&select=stamps`, {
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
+        });
+        if(!res.ok) return null;
+        const rows = await res.json();
+        return rows.length ? rows[0].stamps : 0;
+      }catch(err){ console.error('Loyalty lookup failed:', err); return null; }
+    }
+
+    async function setLoyaltyStamps(cid, stamps){
+      try{
+        const existingRes = await fetch(`${SUPABASE_URL}/rest/v1/bean_loyalty?cid=eq.${encodeURIComponent(cid)}&select=cid`, {
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
+        });
+        const rows = existingRes.ok ? await existingRes.json() : [];
+        const body = JSON.stringify({ cid, stamps, updated_at: new Date().toISOString() });
+
+        if(rows.length){
+          await fetch(`${SUPABASE_URL}/rest/v1/bean_loyalty?cid=eq.${encodeURIComponent(cid)}`, {
+            method:'PATCH',
+            headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type':'application/json', Prefer:'return=minimal' },
+            body
+          });
+        }else{
+          await fetch(`${SUPABASE_URL}/rest/v1/bean_loyalty`, {
+            method:'POST',
+            headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type':'application/json', Prefer:'return=minimal' },
+            body
+          });
+        }
+        return true;
+      }catch(err){ console.error('Loyalty save failed:', err); return false; }
+    }
+
+    async function addLoyaltyStamp(cid){
+      const current = await fetchLoyaltyStamps(cid);
+      if(current === null) return null;
+      const newStamps = current + 1;
+      const ok = await setLoyaltyStamps(cid, newStamps);
+      return ok ? newStamps : null;
+    }
+
+    function renderLoyaltyStatusDisplay(stamps){
+      if(stamps === null){
+        loyaltyStatusEl.textContent = 'Could not check loyalty status.';
+        return;
+      }
+      if(stamps >= 5){
+        loyaltyStatusEl.innerHTML = `🎉 <strong style="color:var(--accent);">Reward ready!</strong> (${stamps} stamps) <button id="redeemLoyaltyBtn" class="btn" style="padding:3px 10px;font-size:.75rem;margin-left:4px;">Redeem</button>`;
+        document.getElementById('redeemLoyaltyBtn').addEventListener('click', openRedeemLoyaltyConfirm);
+      }else{
+        loyaltyStatusEl.textContent = `⭐ ${stamps}/5 stamps`;
+      }
+    }
+
+    async function refreshLoyaltyStatus(){
+      const cid = getValidLoyaltyCid();
+      if(!cid){ loyaltyStatusEl.textContent = ''; return; }
+      loyaltyStatusEl.textContent = 'Checking…';
+      const stamps = await fetchLoyaltyStamps(cid);
+      renderLoyaltyStatusDisplay(stamps);
+    }
+
+    loyaltyCidInput.addEventListener('input', () => {
+      clearTimeout(loyaltyDebounce);
+      loyaltyDebounce = setTimeout(refreshLoyaltyStatus, 500);
+    });
+
+    function openRedeemLoyaltyConfirm(){
+      const cid = getValidLoyaltyCid();
+      if(!cid) return;
+      pendingRedeemCid = cid;
+      document.getElementById('redeemLoyaltyModal').showModal();
+    }
+    document.getElementById('closeRedeemLoyaltyModal').addEventListener('click', () => document.getElementById('redeemLoyaltyModal').close());
+    document.getElementById('cancelRedeemLoyaltyBtn').addEventListener('click', () => document.getElementById('redeemLoyaltyModal').close());
+    document.getElementById('confirmRedeemLoyaltyBtn').addEventListener('click', async () => {
+      const cid = pendingRedeemCid;
+      pendingRedeemCid = null;
+      document.getElementById('redeemLoyaltyModal').close();
+      if(!cid) return;
+      const current = await fetchLoyaltyStamps(cid);
+      if(current === null){ showAlert('Could not reach the server to redeem this reward. Try again.'); return; }
+      const remaining = Math.max(0, current - 5);
+      await setLoyaltyStamps(cid, remaining);
+      renderLoyaltyStatusDisplay(remaining);
+      showAlert(`Reward redeemed! Don't forget to comp a free meal for this order. Remaining stamps: ${remaining}/5.`, 'Reward Redeemed');
+    });
+
+
     function renderAll(){ renderCards(); renderCart(); renderFulfillment(); renderTotals(); renderDiscount(); renderHistory(); renderIngredients(); renderItemTotals(); }
 
-    function checkout(){
+    async function checkout(){
       if(!state.cart.length){ showAlert('Your order is empty.'); return; }
       const employeeName = (document.getElementById('employeeName')?.value || '').trim();
       if(!employeeName){
@@ -1855,10 +1977,28 @@
         items:state.cart.map(l=>({ id:l.id||null,name:l.name,qty:l.qty,unit:l.unitPrice,meta:l.meta||null,drinks:l.drinks||null,cakes:l.cakes||null,type:l.type||'extra',groupId:l.groupId||null,lineTotal:+(l.unitPrice*l.qty).toFixed(2) })),
         discountPct:state.discountPct, subtotal:+subtotal.toFixed(2), deliveryFee:fee, manualDiscount:manual, total
       };
+
+      const cid = getValidLoyaltyCid();
+      const hasMeal = entry.items.some(i => i.type === 'bundle');
+
       state.history.unshift(entry);
       pushHistoryToStorage(entry);
       state.cart=[]; state.discountPct=0; renderAll();
-      showAlert(`Order Total ${currency(total)} has been checked out.`, 'Order Completed');
+
+      let loyaltyMsg = '';
+      if(cid && hasMeal){
+        const newStamps = await addLoyaltyStamp(cid);
+        if(newStamps !== null){
+          renderLoyaltyStatusDisplay(newStamps);
+          loyaltyMsg = newStamps >= 5
+            ? ` 🎉 Loyalty reward unlocked (${newStamps} stamps) — click Redeem next to their CID to use it!`
+            : ` Loyalty stamp added (${newStamps}/5).`;
+        }
+      }
+
+      showAlert(`Order Total ${currency(total)} has been checked out.${loyaltyMsg}`, 'Order Completed');
+      loyaltyCidInput.value = '';
+      loyaltyStatusEl.textContent = '';
     }
 
     function resetAll(){
