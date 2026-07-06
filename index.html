@@ -65,10 +65,12 @@
     .fulfill-btn{min-width:90px}
     .zone-btn[aria-pressed="true"]{background:linear-gradient(135deg,var(--brown),var(--tan));border:1px solid transparent;background-clip:padding-box;box-shadow:0 0 0 1px var(--brown);color:#fff}
     .order-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px}
-    .meal-group{border:1px solid var(--accent);border-radius:14px;padding:6px;margin:8px 0;background:var(--chip)}
+    .meal-group{border:1px solid var(--accent);border-radius:14px;padding:6px;margin:10px 10px;background:var(--chip);position:relative}
     .meal-group .cart-item{padding:8px}
-    .meal-group .cart-item:first-child{border-bottom:1px solid var(--border);margin-bottom:2px}
+    .meal-group .cart-item:first-child{border-bottom:1px solid var(--border);margin-bottom:2px;padding-right:26px}
     .meal-group .cart-item.included{padding:6px 8px}
+    .remove-meal-btn{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:1px solid #e63946;color:#e63946;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:.8rem;line-height:1;cursor:pointer;padding:0;box-shadow:0 1px 4px rgba(0,0,0,.2);z-index:1;}
+    .remove-meal-btn:hover{background:#e63946;color:#fff;}
     .cart-item{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px;border-bottom:1px dashed var(--border)}
     .cart-item:last-child{border-bottom:none}
     .small{font-size:.85rem;color:var(--muted)}
@@ -108,6 +110,7 @@
       </div>
       <div class="toolrow">
         <input type="text" id="employeeName" placeholder="Employee name" style="padding:9px 12px;border-radius:12px;border:1px solid var(--border);background:var(--chip);color:var(--text);font-size:.9rem;width:160px;">
+        <a href="admin.html" class="btn ghost" title="Add items to the menu">⚙️ Manage Menu</a>
         <button class="btn ghost" id="themeBtn" aria-pressed="false" title="Toggle dark mode">🌙 Dark</button>
       </div>
     </header>
@@ -186,21 +189,13 @@
                   <button type="button" class="btn fulfill-btn" data-fulfill="pickup" style="flex:1;">Pick Up</button>
                   <button type="button" class="btn fulfill-btn" data-fulfill="delivery" style="flex:1;">Delivery</button>
                 </div>
-                <div id="zoneButtons" style="display:none; gap:10px; width:100%;">
-                  <button type="button" class="btn zone-btn" data-zone="city" style="flex:1;">City $50</button>
-                  <button type="button" class="btn zone-btn" data-zone="sandy" style="flex:1;">Sandy $100</button>
-                  <button type="button" class="btn zone-btn" data-zone="paleto" style="flex:1;">Paleto $150</button>
-                </div>
+                <div id="zoneButtons" style="display:none; gap:10px; width:100%;"></div>
               </div>
             </div>
 
             <div class="discount">
               <label>Apply Discount</label>
-              <div id="discountButtons" class="discount-buttons">
-                <button type="button" class="btn discount-btn" data-pct="0">0%</button>
-                <button type="button" class="btn discount-btn" data-pct="10">State</button>
-                <button type="button" class="btn discount-btn" data-pct="20">VIP</button>
-              </div>
+              <div id="discountButtons" class="discount-buttons"></div>
             </div>
 
             <div class="summary" style="margin-top:12px;">
@@ -243,21 +238,13 @@
                   <button type="button" class="btn fulfill-cat-btn" data-fulfill="pickup" style="flex:1;">Pick Up</button>
                   <button type="button" class="btn fulfill-cat-btn" data-fulfill="delivery" style="flex:1;">Delivery</button>
                 </div>
-                <div id="zoneButtonsCat" style="display:none; gap:10px; width:100%;">
-                  <button type="button" class="btn zone-cat-btn" data-zone="city" style="flex:1;">City $50</button>
-                  <button type="button" class="btn zone-cat-btn" data-zone="sandy" style="flex:1;">Sandy $100</button>
-                  <button type="button" class="btn zone-cat-btn" data-zone="paleto" style="flex:1;">Paleto $150</button>
-                </div>
+                <div id="zoneButtonsCat" style="display:none; gap:10px; width:100%;"></div>
               </div>
             </div>
 
             <div class="discount">
               <label>Apply Discount</label>
-              <div id="discountButtonsCat" class="discount-buttons">
-                <button type="button" class="btn discount-cat-btn" data-pct="0">0%</button>
-                <button type="button" class="btn discount-cat-btn" data-pct="10">State</button>
-                <button type="button" class="btn discount-cat-btn" data-pct="20">VIP</button>
-              </div>
+              <div id="discountButtonsCat" class="discount-buttons"></div>
             </div>
 
             <div class="summary" style="margin-top:12px;">
@@ -399,135 +386,101 @@
     </div>
   </dialog>
 
+  <dialog id="removeMealModal">
+    <div class="modal-header">
+      <strong>⚠️ Remove Meal</strong>
+      <button class="btn" id="closeRemoveMealModal" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div>Remove this meal and everything included with it from your order?</div>
+      <div class="toolrow" style="justify-content:flex-end;gap:10px;">
+        <button class="btn" id="cancelRemoveMealBtn">Cancel</button>
+        <button class="btn primary" id="confirmRemoveMealBtn" style="background:#e63946;">Remove Meal</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="menu-data.js"></script>
   <script>
-    // ---------- Data ----------
-    const MENU = {
-      classic: [
-        { id:'bev-bean', name:'☕ Bean Coffee',   price:15,  type:'drink' },
-        { id:'bev-capp', name:'☕ Cappuccino',    price:20,  type:'drink' },
-        { id:'bev-esp',  name:'⚡ Espresso',      price:36,  type:'drink' },
-        { id:'bev-iced', name:'🧊 Iced Latte',    price:26,  type:'drink' },
-        { id:'bev-choc', name:'🍫 Hot Chocolate', price:46,  type:'drink' },
-        { id:'bev-matcha',  name:'🍵 Matcha Latte',  price:30,  type:'drink' },
-        { id:'ex-lemon',  name:'🥤 Pink Lemonade', price:34,  type:'drink', isDrink:true },
-      ],
-      bundles: [
-        {
-          id:'bd-med',
-          name:'🥐 Medium Café Meal: 5 Drinks + 5 Waffles',
-          price:330,
-          type:'bundle',
-          drinksIncluded:5,
-          description:'Choice of 5 drinks + 5 Wonder Waffles'
-        },
-        {
-          id:'bd-large',
-          name:'🥐 Large Café Meal: 10 Drinks + 10 Waffles',
-          price:650,
-          type:'bundle',
-          drinksIncluded:10,
-          description:'Choice of 10 drinks + 10 Wonder Waffles'
-        },
-        {
-          id:'bd-bigboy',
-          name:'🥐 Big Boy Café Meal: 20 Drinks + 20 Waffles',
-          price:1290,
-          type:'bundle',
-          drinksIncluded:20,
-          description:'Choice of 20 Drinks + 20 Wonder Waffles'
-        },
-        { id:'sp-hay',   name:'🍰🍵🧇🍦 Hayward Special', price:900, type:'bundle',
-          description:'Choice of 2 Cakes + 10 Ice Latte + 10 Wonder Waffle' },
-        {
-          id:'ss-med',
-          name:'🧇 Simple Sweet Stack Medium: 5 Drinks + 5 Waffles',
-          price:440,
-          type:'bundle',
-          drinksIncluded:5,
-          description:'Choice of 5 Drinks + 5 Choice of topped Waffles'
-        },
-        {
-          id:'ss-large',
-          name:'🧇 Simple Sweet Stack Large: 10 Drinks + 10 Waffles',
-          price:870,
-          type:'bundle',
-          drinksIncluded:10,
-          description:'Choice of 10 Drinks + 10 Choice of topped Waffles'
-        },
-        {
-          id:'og-bag',
-          name:'🧺 On-The-Go Bag: 7 Drinks + 7 Waffles + 2 Ice Cream',
-          price:600,
-          type:'bundle',
-          drinksIncluded:7,
-          description:'Choice of 7 Drinks + Choice of 7 Waffles (Wonder/Topped) + Choice of 2 Ice Creams'
-        },
-        {
-          id:'pk-beanbox',
-          name:'🍱 Bean Box: Large Meal + Lunch Box',
-          price:980,
-          type:'bundle',
-          drinksIncluded:10,
-          description:'Choice of 10 Drinks + Wonder Waffles + Lunch Box'
-        },
-        {
-          id:'rf-beanbox',
-          name:'🍱 Bean Box Refill: 10 Drinks + 10 Waffles',
-          price:680,
-          type:'bundle',
-          drinksIncluded:10,
-          description:'Choice of 10 Drinks + Wonder Waffles'
-        },
-      ],
-      iceCream: [
-        { id:'ex-ice-van',   name:'🍦 Vanilla Ice Cream',      price:36, type:'extra' },
-        { id:'ex-ice-choc',  name:'🍫🍦 Chocolate Ice Cream',    price:36, type:'extra' },
-        { id:'ex-ice-apple', name:'🍏🍦 Apple Ice Cream',        price:36, type:'extra' },
-        { id:'ex-ice-banana',name:'🍌🍦 Banana Ice Cream',       price:36, type:'extra' },
-        { id:'ex-ice-mango', name:'🥭🍦 Mango Ice Cream',        price:42, type:'extra' },
-        { id:'ex-ice-pom',   name:'❤️🍦 Pomegranate Ice Cream',  price:42, type:'extra' },
-        { id:'ex-ice-water', name:'🍉🍦 Watermelon Ice Cream',   price:42, type:'extra' },
-        { id:'ex-ice-lemon', name:'🍋🍦 Lemon Ice Cream',        price:36, type:'extra' },
-        { id:'ex-ice-straw', name:'🍓🍦 Strawberry Ice Cream',   price:36, type:'extra' },
-        { id:'ex-ice-pine',  name:'🍍🍦 Pineapple Ice Cream',    price:42, type:'extra' },
-      ],
-      extras: [
-        { id:'ex-cup',    name:'🧁 Cupcake',        price:18,  type:'extra' },
-        { id:'ex-cookie', name:'🍪 Cream Cookie',   price:20,  type:'extra' },
-        { id:'ex-donut',  name:'🍩 Donut',          price:16,  type:'extra' },
-        { id:'ex-waffle', name:'🧇 Wonder Waffle',  price:20,  type:'extra' },
-        { id:'ex-waffle-strawnana', name:'🧇🍓🍌 Strawberry-Banana Waffle', price:42,  type:'extra' },
-        { id:'ex-waffle-cinapple',  name:'🧇🌰🍏 Cinnamon-Apple Waffle',    price:42,  type:'extra' },
-        { id:'ex-waffle-straw',     name:'🧇🍓 Strawberry Waffle',          price:42,  type:'extra' },
-        { id:'ex-waffle-choc',      name:'🧇🍫 Chocolate Waffle',           price:42,  type:'extra' },
-        { id:'ex-cake-berry', name:'🍓 Berry Cake',      price:70, type:'extra', isCake:true },
-        { id:'ex-cake-lemon', name:'🍋 Lemon Cake',      price:70, type:'extra', isCake:true },
-        { id:'ex-cake-choc',  name:'🍫 Chocolate Cake',  price:70, type:'extra', isCake:true },
-        { id:'ex-cheese', name:'🍰 Cheesecake',     price:24,  type:'extra' },
-        { id:'ex-kinder', name:'🥚 Kinder Egg',     price:1000, type:'extra' },
-        { id:'ex-lunch',  name:'🍱 Lunch Box',      price:300,  type:'extra' },
-        { id:'ex-cocobar', name:'🍫 Coco Bar',      price:32,  type:'extra' },
-      ],
-      specialty:[], deals:[], packs:[],
-      // Catering menu — entirely separate from the regular menu above.
-      // Tell Claude what packages/pricing to add and they'll appear as cards here.
-      cateringPackages: [
-        {
-          id:'cat-pd-special',
-          name:'🎉 PD Special',
-          price:2875,
-          type:'catering',
-          description:'50 Wonder Waffles + 50 Pink Lemonades + 10 Bean Coffees + 10 Donuts.'
-        },
-        {
-          id:'cat-party-pack',
-          name:'🎉 Party Pack',
-          price:5340,
-          type:'catering',
-          description:'Choice of 60 Topped Waffles + Choice of 15 Cakes + 30x Pink Lemonade + 20x Ice Latte'
-        },
-      ],
-    };
+    // ---------- Data (MENU comes from menu-data.js, shared with admin.html) ----------
+    // ---------- Manage Menu: locally-saved custom items merge into MENU on load ----------
+    // (Local to this device/browser for now — will move to shared storage once the admin login is built.)
+    const CUSTOM_MENU_KEY = 'bean_custom_menu_v1';
+    let customMenuItems = [];
+    try{
+      customMenuItems = JSON.parse(localStorage.getItem(CUSTOM_MENU_KEY) || '[]');
+      if(!Array.isArray(customMenuItems)) customMenuItems = [];
+    }catch{ customMenuItems = []; }
+
+    customMenuItems.forEach(entry => {
+      if(MENU[entry.category]) MENU[entry.category].push(entry.item);
+    });
+
+    function saveCustomMenuItems(){
+      localStorage.setItem(CUSTOM_MENU_KEY, JSON.stringify(customMenuItems));
+    }
+
+    // ---------- Manage Menu: locally-saved overrides for EXISTING catalog items ----------
+    // Keyed by item id -> { name?, price?, description?, drinksIncluded? }. Original menu-data.js is never rewritten.
+    const MENU_OVERRIDES_KEY = 'bean_menu_overrides_v1';
+    let menuOverrides = {};
+    try{
+      menuOverrides = JSON.parse(localStorage.getItem(MENU_OVERRIDES_KEY) || '{}');
+      if(typeof menuOverrides !== 'object' || !menuOverrides) menuOverrides = {};
+    }catch{ menuOverrides = {}; }
+
+    Object.keys(menuOverrides).forEach(id => {
+      const override = menuOverrides[id];
+      Object.values(MENU).forEach(arr => {
+        if(!Array.isArray(arr)) return;
+        const item = arr.find(i => i.id === id);
+        if(item) Object.assign(item, override);
+      });
+    });
+
+    // ---------- Manage Menu: locally-deleted items/bundles are hidden (not removed from menu-data.js) ----------
+    const DELETED_ITEMS_KEY = 'bean_deleted_items_v1';
+    let deletedItemIds = [];
+    try{
+      deletedItemIds = JSON.parse(localStorage.getItem(DELETED_ITEMS_KEY) || '[]');
+      if(!Array.isArray(deletedItemIds)) deletedItemIds = [];
+    }catch{ deletedItemIds = []; }
+
+    if(deletedItemIds.length){
+      const deletedSet = new Set(deletedItemIds);
+      Object.keys(MENU).forEach(cat => {
+        if(Array.isArray(MENU[cat])) MENU[cat] = MENU[cat].filter(i => !deletedSet.has(i.id));
+      });
+    }
+
+    // ---------- Manage Menu: shop settings (discount tiers & delivery zone fees) ----------
+    // Defaults come from SHOP_SETTINGS in menu-data.js; admin.html saves overrides here.
+    const SHOP_SETTINGS_KEY = 'bean_shop_settings_v1';
+    try{
+      const savedSettings = JSON.parse(localStorage.getItem(SHOP_SETTINGS_KEY) || '{}');
+      if(Array.isArray(savedSettings.discountTiers)) SHOP_SETTINGS.discountTiers = savedSettings.discountTiers;
+      if(Array.isArray(savedSettings.deliveryZones)) SHOP_SETTINGS.deliveryZones = savedSettings.deliveryZones;
+    }catch{}
+
+    const ZONE_FEES = {};
+    SHOP_SETTINGS.deliveryZones.forEach(z => { ZONE_FEES[z.key] = z.fee; });
+
+    function buildZoneButtonsHTML(className){
+      return SHOP_SETTINGS.deliveryZones.map(z =>
+        `<button type="button" class="btn ${className}" data-zone="${z.key}" style="flex:1;">${z.label} $${z.fee}</button>`
+      ).join('');
+    }
+    function buildDiscountButtonsHTML(className){
+      const tiers = [{ pct:0, label:'0%' }, ...SHOP_SETTINGS.discountTiers];
+      return tiers.map(t =>
+        `<button type="button" class="btn ${className}" data-pct="${t.pct}">${t.label}</button>`
+      ).join('');
+    }
+
+    document.getElementById('zoneButtons').innerHTML = buildZoneButtonsHTML('zone-btn');
+    document.getElementById('zoneButtonsCat').innerHTML = buildZoneButtonsHTML('zone-cat-btn');
+    document.getElementById('discountButtons').innerHTML = buildDiscountButtonsHTML('discount-btn');
+    document.getElementById('discountButtonsCat').innerHTML = buildDiscountButtonsHTML('discount-cat-btn');
 
     const RECIPE_MAP = {
       'bev-bean': {'Water':2,'Coffee bag':1},
@@ -737,11 +690,17 @@
 
     // ---------- Menu card rendering ----------
     function cardHTML(item, opts={}){
-      const needsCombo = (item.drinksIncluded||0)>0 || item.id==='sp-hay' || item.id==='cat-party-pack';
+      const needsCombo = (Array.isArray(item.components) && item.components.length>0) || item.id==='cat-party-pack';
       const showQty = opts.showQty!==false;
+      const titleHTML = item.icon
+        ? `<div style="display:flex;align-items:center;gap:8px;">
+             <span style="width:28px;height:28px;flex:none;border-radius:50%;background:var(--chip);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1rem;">${item.icon}</span>
+             <h3 style="margin:0;">${item.name}</h3>
+           </div>`
+        : `<h3>${item.name}</h3>`;
       return `
         <article class="card">
-          <h3>${item.name}</h3>
+          ${titleHTML}
           ${item.description?`<div class="muted" style="font-size:.85rem;">${item.description}</div>`:''}
           <div class="toolrow" style="justify-content:space-between;">
             <span class="price">${currency(item.price)}</span>
@@ -763,7 +722,7 @@
 
       const make = arr => arr.map(cardHTML).join('');
       classic.innerHTML = make(MENU.classic);
-      mealBundles.innerHTML = MENU.bundles.filter(i=>['bd-med','bd-large','pk-beanbox','rf-beanbox','bd-bigboy','sp-hay','ss-med','ss-large','og-bag'].includes(i.id)).map(i=>cardHTML(i,{showQty:false})).join('');
+      mealBundles.innerHTML = MENU.bundles.map(i=>cardHTML(i,{showQty:false})).join('');
       iceCream.innerHTML = make(MENU.iceCream);
       extras.innerHTML  = make(MENU.extras);
 
@@ -803,13 +762,23 @@
       const itemRow = (l,idx)=>`
         <div class="cart-item${l.groupId?' included':''}">
           <div>
-            <div><strong>${l.name}</strong></div>
+            <strong>${l.name}</strong>
           </div>
-          <div class="qty">
-            <button data-dec="${idx}">−</button>
-            <output>${l.qty}</output>
-            <button data-inc="${idx}">+</button>
-          </div>
+          ${l.groupId && l.noMerge ? `
+            <div class="qty"><span class="muted">×${l.qty}</span></div>
+          ` : l.groupId ? `
+            <div class="qty">
+              <button data-dec-meal="${idx}">−</button>
+              <output>${l.qty}</output>
+              <button data-inc-meal="${idx}">+</button>
+            </div>
+          ` : `
+            <div class="qty">
+              <button data-dec="${idx}">−</button>
+              <output>${l.qty}</output>
+              <button data-inc="${idx}">+</button>
+            </div>
+          `}
           <div><strong>${currency(l.unitPrice*l.qty)}</strong></div>
         </div>`;
 
@@ -824,7 +793,10 @@
             groupHtml += itemRow(state.cart[j],j);
             j++;
           }
-          html += `<div class="meal-group">${groupHtml}</div>`;
+          html += `<div class="meal-group">
+            <button class="remove-meal-btn" data-remove-group="${l.groupId}" title="Remove meal" aria-label="Remove meal">✕</button>
+            ${groupHtml}
+          </div>`;
           i=j;
         } else {
           html += itemRow(l,i);
@@ -833,12 +805,53 @@
       }
       cart.innerHTML = html;
 
+      cart.querySelectorAll('[data-remove-group]').forEach(b=>b.addEventListener('click',()=>{
+        openRemoveMealConfirm(b.getAttribute('data-remove-group'));
+      }));
+
+      cart.querySelectorAll('[data-inc-meal]').forEach(b=>b.addEventListener('click',()=>{
+        const i=+b.getAttribute('data-inc-meal');
+        const line = state.cart[i];
+        rescaleMealGroup(line.groupId, line.qty+1);
+        renderCart(); renderTotals(); renderIngredients(); renderItemTotals();
+      }));
+      cart.querySelectorAll('[data-dec-meal]').forEach(b=>b.addEventListener('click',()=>{
+        const i=+b.getAttribute('data-dec-meal');
+        const line = state.cart[i];
+        const newQty = line.qty-1;
+        if(newQty<=0){
+          state.cart = state.cart.filter(l=>l.groupId!==line.groupId);
+        }else{
+          rescaleMealGroup(line.groupId, newQty);
+        }
+        renderCart(); renderTotals(); renderIngredients(); renderItemTotals();
+      }));
+
       cart.querySelectorAll('[data-inc]').forEach(b=>b.addEventListener('click',()=>{
         const i=+b.getAttribute('data-inc'); state.cart[i].qty++; renderCart(); renderTotals(); renderIngredients(); renderItemTotals();
       }));
       cart.querySelectorAll('[data-dec]').forEach(b=>b.addEventListener('click',()=>{
         const i=+b.getAttribute('data-dec'); state.cart[i].qty--; if(state.cart[i].qty<=0) state.cart.splice(i,1); renderCart(); renderTotals(); renderIngredients(); renderItemTotals();
       }));
+    }
+
+    // Scales every included item in a meal group proportionally when the meal's own
+    // quantity is changed directly from the cart (not through the wizard).
+    function rescaleMealGroup(groupId, newBundleQty){
+      const groupLines = state.cart.filter(l => l.groupId === groupId);
+      const bundleLine = groupLines.find(l => !l.noMerge);
+      if(!bundleLine || newBundleQty <= 0) return;
+
+      const oldBundleQty = bundleLine.qty;
+      const ratio = newBundleQty / oldBundleQty;
+
+      groupLines.forEach(l => {
+        if(l.noMerge){
+          l.qty = Math.max(1, Math.round(l.qty * ratio));
+        }
+      });
+
+      bundleLine.qty = newBundleQty;
     }
 
     function addToCart(line){
@@ -903,7 +916,7 @@
       const q = qty||1;
       const subItems = Object.entries(comp).map(([compId,compQty])=>{
         const compItem = findMenuItem(compId);
-        return { id:compId, name:`${compItem?compItem.name:compId} (Included)`, perQty:compQty, type:compItem?.type||'extra' };
+        return { id:compId, name:`${compItem?compItem.name:compId}`, perQty:compQty, type:compItem?.type||'extra' };
       });
       addOrStackCateringPackage(item, q, subItems);
     }
@@ -1198,7 +1211,6 @@
     document.getElementById('viewOrderRecipesCatBtn').addEventListener('click', ()=>showRecipesForOrder(state.cateringCart));
     document.getElementById('closeOrderRecipes').addEventListener('click', ()=>orderRecipesModal.close());
 
-    const ZONE_FEES = { city:50, sandy:100, paleto:150 };
     // ---------- Fulfillment (pickup / delivery) ----------
     function renderFulfillment(){
       document.querySelectorAll('.fulfill-btn').forEach(b=> b.setAttribute('aria-pressed', String(b.dataset.fulfill===state.fulfillment)));
@@ -1376,203 +1388,52 @@
     const comboNext=document.getElementById('comboNext');
     document.getElementById('closeCombo').addEventListener('click',()=>comboModal.close());
 
+    function poolForComponent(comp){
+      const categoryPool = MENU[comp.category] || [];
+      if(Array.isArray(comp.poolIds) && comp.poolIds.length){
+        return categoryPool.filter(x => comp.poolIds.includes(x.id));
+      }
+      return categoryPool;
+    }
+
+    // ---------- Regular combo wizard: fully driven by item.components ----------
+    // Each component is either { type:'choice', label, category, qty, poolIds? } — customer picks `qty` items
+    // from the given pool — or { type:'fixed', label, category, itemId, qty } — always included, no picker step.
     function openComboWizard(item, qty){
       const usedTotal = (counts) => Object.values(counts).reduce((a,b)=>a+b,0);
+      const orderQty = qty || 1;
+      const components = Array.isArray(item.components) ? item.components : [];
+      const choiceSteps = components.filter(c => c.type === 'choice' && c.qty > 0);
+      const fixedSteps = components.filter(c => c.type === 'fixed' && c.qty > 0);
+      const stepCounts = choiceSteps.map(() => ({}));
+      let stepIndex = 0;
 
-      if(item.id==='sp-hay'){
-        const cakesNeeded = 2*(qty||1);
-        const cakePool = getCakePool();
-        const cakeCounts = {};
-        let confirmMode=false;
+      const fmt = id => (findMenuItem(id)||{}).name || id;
 
-        const renderCakeGrid=()=>{
-          const used = usedTotal(cakeCounts);
-          const remaining = cakesNeeded - used;
-          comboTitle.textContent = `Cakes: pick ${cakesNeeded} (remaining ${Math.max(0,remaining)})`;
-          comboSteps.innerHTML = confirmMode ? '1. Cakes · <strong>2. Confirm</strong>' : '<strong>1. Cakes</strong> · 2. Confirm';
-          comboContent.innerHTML = `
-            <div class="selector-grid">
-              ${cakePool.map(p=>`
-                <div class="select-card" data-id="${p.id}">
-                  <div class="select-title">${p.name}</div>
-                  <div class="select-qty">
-                    <button data-minus="${p.id}">−</button>
-                    <output data-out="${p.id}">${cakeCounts[p.id]||0}</output>
-                    <button data-plus="${p.id}">+</button>
-                  </div>
-                  <div class="toolrow" style="gap:6px; margin-top:6px;">
-                    <button class="btn" data-half="${p.id}">Half</button>
-                    <button class="btn" data-max="${p.id}">Max</button>
-                  </div>
-                </div>`).join('')}
-            </div>`;
-
-          comboContent.querySelectorAll('[data-plus]').forEach(btn=>{
-            btn.addEventListener('click',()=>{
-              const id = btn.getAttribute('data-plus');
-              if (usedTotal(cakeCounts) < cakesNeeded){
-                cakeCounts[id] = (cakeCounts[id]||0) + 1;
-                renderCakeGrid();
-              }
-            });
-          });
-          comboContent.querySelectorAll('[data-minus]').forEach(btn=>{
-            btn.addEventListener('click',()=>{
-              const id = btn.getAttribute('data-minus');
-              cakeCounts[id] = Math.max(0, (cakeCounts[id]||0) - 1);
-              renderCakeGrid();
-            });
-          });
-
-          comboContent.querySelectorAll('[data-half]').forEach(btn=>{
-            btn.addEventListener('click',()=>{
-              const id = btn.getAttribute('data-half');
-              const current = cakeCounts[id]||0;
-              const usedWithout = usedTotal(cakeCounts) - current;
-              const remainingForThis = Math.max(0, cakesNeeded - usedWithout);
-              const target = Math.min(Math.ceil(cakesNeeded/2), remainingForThis);
-              cakeCounts[id] = target;
-              renderCakeGrid();
-            });
-          });
-          comboContent.querySelectorAll('[data-max]').forEach(btn=>{
-            btn.addEventListener('click',()=>{
-              const id = btn.getAttribute('data-max');
-              const current = cakeCounts[id]||0;
-              const usedWithout = usedTotal(cakeCounts) - current;
-              const remainingForThis = Math.max(0, cakesNeeded - usedWithout);
-              cakeCounts[id] = remainingForThis;
-              renderCakeGrid();
-            });
-          });
-
-          comboPrev.style.display='none';
-          comboNext.textContent = confirmMode ? 'Add to Cart' : 'Next';
-          comboNext.disabled = remaining>0;
-        };
-
-        const renderConfirm=()=>{
-          comboTitle.textContent = item.name;
-          const fmt = id => (findMenuItem(id)||{}).name||id;
-          const list = Object.entries(cakeCounts).filter(([,c])=>c>0).map(([id,c])=>`${fmt(id)} x${c}`);
-          comboSteps.innerHTML = '1. Cakes · <strong>2. Confirm</strong>';
-          comboContent.innerHTML = `
-            <div class="summary" style="gap:10px;">
-              ${list.length?`<div><strong>Cakes:</strong> ${list.join(', ')}</div>`:''}
-              <div class="small muted">
-                Includes 10 Iced Lattes and 10 Wonder Waffles automatically.
-              </div>
-            </div>`;
-          comboPrev.style.display='none';
-          comboNext.textContent='Add to Cart';
-          comboNext.disabled=false;
-        };
-
-        comboNext.onclick=()=>{
-          if(!confirmMode){
-            confirmMode=true;
-            renderConfirm();
-            return;
-          }
-
-          const q = qty || 1;
-          const groupId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-          addToCart({
-            id:item.id,
-            name:item.name,
-            unitPrice:item.price,
-            qty:q,
-            type:item.type,
-            cakes:cakeCounts,
-            meta:'Includes 10 Iced Lattes and 10 Wonder Waffles',
-            groupId
-          });
-
-          addToCart({
-            id:'ex-waffle',
-            name:'🧇 Wonder Waffle (Hayward)',
-            unitPrice:0,
-            qty:10*q,
-            type:'extra',
-            meta:'Hayward Special',
-            noMerge:true,
-            groupId
-          });
-
-          addToCart({
-            id:'bev-iced',
-            name:'🧊 Iced Latte (Hayward)',
-            unitPrice:0,
-            qty:10*q,
-            type:'drink',
-            meta:'Hayward Special',
-            noMerge:true,
-            groupId
-          });
-
-          Object.entries(cakeCounts).forEach(([id,c])=>{
-            if(c>0){
-              const nm=(getCakePool().find(x=>x.id===id)||{}).name||'Cake';
-              addToCart({
-                id,
-                name:`${nm} (Hayward)`,
-                unitPrice:0,
-                qty:c*q,
-                type:'extra',
-                meta:'Hayward Special',
-                noMerge:true,
-                groupId
-              });
-            }
-          });
-
-          comboModal.close();
-        };
-
-        renderCakeGrid();
-        comboModal.showModal();
-        return;
-      }
-
-      const drinksNeeded = item.drinksIncluded || 0;
-      const pool = getMealDrinkPool();
-      const counts = {};
-
-      const hasWaffleStep = item.id==='ss-med' || item.id==='ss-large' || item.id==='og-bag';
-      const waffleNeeded = hasWaffleStep ? drinksNeeded : 0;
-      const wafflePool = item.id==='og-bag'
-        ? MENU.extras.filter(x=>['ex-waffle','ex-waffle-strawnana','ex-waffle-cinapple','ex-waffle-straw','ex-waffle-choc'].includes(x.id))
-        : MENU.extras.filter(x=>['ex-waffle-strawnana','ex-waffle-cinapple','ex-waffle-straw','ex-waffle-choc'].includes(x.id));
-      const waffleCounts = {};
-
-      const hasIceCreamStep = item.id==='og-bag';
-      const iceCreamNeeded = hasIceCreamStep ? 2 : 0;
-      const iceCreamPool = MENU.iceCream;
-      const iceCreamCounts = {};
-
-      let step = 'drinks';
-
-      const stepLabel=()=>{
-        const labels = ['Drinks'];
-        if(hasWaffleStep) labels.push('Waffles');
-        if(hasIceCreamStep) labels.push('Ice Cream');
+      const stepLabel = () => {
+        const labels = choiceSteps.map(c => c.label || 'Items');
         labels.push('Confirm');
-        const stepIdx = { drinks:0, waffles:hasWaffleStep?1:-1, icecream: hasIceCreamStep?(hasWaffleStep?2:1):-1, confirm: labels.length-1 }[step];
-        return labels.map((l,i)=> i===stepIdx ? `<strong>${i+1}. ${l}</strong>` : `${i+1}. ${l}`).join(' · ');
+        return labels.map((l,i) => i===stepIndex ? `<strong>${i+1}. ${l}</strong>` : `${i+1}. ${l}`).join(' · ');
       };
 
-      const renderPickerGrid=(needed,curCounts,pickPool,onChange)=>{
-        const used = usedTotal(curCounts);
+      const renderChoiceGrid = () => {
+        const comp = choiceSteps[stepIndex];
+        const counts = stepCounts[stepIndex];
+        const pool = poolForComponent(comp);
+        const needed = comp.qty * orderQty;
+        const used = usedTotal(counts);
         const remaining = needed - used;
+
+        comboTitle.textContent = `${comp.label || 'Items'}: pick ${needed} (remaining ${Math.max(0,remaining)})`;
+        comboSteps.innerHTML = stepLabel();
         comboContent.innerHTML = `
           <div class="selector-grid">
-            ${pickPool.map(p=>`
+            ${pool.map(p=>`
               <div class="select-card" data-id="${p.id}">
                 <div class="select-title">${p.name}</div>
                 <div class="select-qty">
                   <button data-minus="${p.id}">−</button>
-                  <output data-out="${p.id}">${curCounts[p.id]||0}</output>
+                  <output data-out="${p.id}">${counts[p.id]||0}</output>
                   <button data-plus="${p.id}">+</button>
                 </div>
                 <div class="toolrow" style="gap:6px; margin-top:6px;">
@@ -1585,157 +1446,132 @@
         comboContent.querySelectorAll('[data-plus]').forEach(btn=>{
           btn.addEventListener('click',()=>{
             const id = btn.getAttribute('data-plus');
-            if (usedTotal(curCounts) < needed){
-              curCounts[id] = (curCounts[id]||0) + 1;
-              onChange();
+            if (usedTotal(counts) < needed){
+              counts[id] = (counts[id]||0) + 1;
+              renderChoiceGrid();
             }
           });
         });
         comboContent.querySelectorAll('[data-minus]').forEach(btn=>{
           btn.addEventListener('click',()=>{
             const id = btn.getAttribute('data-minus');
-            curCounts[id] = Math.max(0, (curCounts[id]||0) - 1);
-            onChange();
+            counts[id] = Math.max(0, (counts[id]||0) - 1);
+            renderChoiceGrid();
           });
         });
         comboContent.querySelectorAll('[data-half]').forEach(btn=>{
           btn.addEventListener('click',()=>{
             const id = btn.getAttribute('data-half');
-            const current = curCounts[id]||0;
-            const usedWithout = usedTotal(curCounts) - current;
+            const current = counts[id]||0;
+            const usedWithout = usedTotal(counts) - current;
             const remainingForThis = Math.max(0, needed - usedWithout);
-            curCounts[id] = Math.min(Math.ceil(needed/2), remainingForThis);
-            onChange();
+            counts[id] = Math.min(Math.ceil(needed/2), remainingForThis);
+            renderChoiceGrid();
           });
         });
         comboContent.querySelectorAll('[data-max]').forEach(btn=>{
           btn.addEventListener('click',()=>{
             const id = btn.getAttribute('data-max');
-            const current = curCounts[id]||0;
-            const usedWithout = usedTotal(curCounts) - current;
-            curCounts[id] = Math.max(0, needed - usedWithout);
-            onChange();
+            const current = counts[id]||0;
+            const usedWithout = usedTotal(counts) - current;
+            counts[id] = Math.max(0, needed - usedWithout);
+            renderChoiceGrid();
           });
         });
 
-        comboPrev.style.display='none';
+        comboPrev.style.display = stepIndex > 0 ? 'inline-flex' : 'none';
         comboNext.textContent = 'Next';
-        comboNext.disabled = remaining>0;
+        comboNext.disabled = remaining > 0;
       };
 
-      const renderGrid=()=>{
-        const used = usedTotal(counts);
-        const remaining = drinksNeeded - used;
-        comboTitle.textContent = `Drinks: pick ${drinksNeeded} (remaining ${Math.max(0,remaining)})`;
+      const renderConfirm = () => {
+        comboTitle.textContent = item.name || 'Confirm Selection';
+        const parts = choiceSteps.map((comp,i) => {
+          const list = Object.entries(stepCounts[i]).filter(([,c])=>c>0).map(([id,c])=>`${fmt(id)} x${c}`);
+          return list.length ? `<div><strong>${comp.label||'Items'}:</strong> ${list.join(', ')}</div>` : '';
+        }).join('');
+        const fixedInfo = fixedSteps.length
+          ? `<div class="small muted">Also includes: ${fixedSteps.map(c=>`${c.qty*orderQty}x ${fmt(c.itemId)}`).join(', ')}</div>`
+          : '';
+        const info = (findMenuItem(item.id)?.description) || '';
         comboSteps.innerHTML = stepLabel();
-        renderPickerGrid(drinksNeeded, counts, pool, renderGrid);
-      };
-
-      const renderWaffleGrid=()=>{
-        const used = usedTotal(waffleCounts);
-        const remaining = waffleNeeded - used;
-        comboTitle.textContent = `Waffles: pick ${waffleNeeded} (remaining ${Math.max(0,remaining)})`;
-        comboSteps.innerHTML = stepLabel();
-        renderPickerGrid(waffleNeeded, waffleCounts, wafflePool, renderWaffleGrid);
-      };
-
-      const renderIceCreamGrid=()=>{
-        const used = usedTotal(iceCreamCounts);
-        const remaining = iceCreamNeeded - used;
-        comboTitle.textContent = `Ice Cream: pick ${iceCreamNeeded} (remaining ${Math.max(0,remaining)})`;
-        comboSteps.innerHTML = stepLabel();
-        renderPickerGrid(iceCreamNeeded, iceCreamCounts, iceCreamPool, renderIceCreamGrid);
-      };
-
-      const renderConfirm=()=>{
-        comboTitle.textContent=item.name||'Confirm Selection';
-        const fmt=id=>(findMenuItem(id)||{}).name||id;
-        const drinkParts=Object.entries(counts).filter(([,c])=>c>0).map(([id,c])=>`${fmt(id)} x${c}`);
-        const waffleParts=Object.entries(waffleCounts).filter(([,c])=>c>0).map(([id,c])=>`${fmt(id)} x${c}`);
-        const iceCreamParts=Object.entries(iceCreamCounts).filter(([,c])=>c>0).map(([id,c])=>`${fmt(id)} x${c}`);
-        const info=(findMenuItem(item.id)?.description)||'';
-        comboSteps.innerHTML=stepLabel();
         comboContent.innerHTML = `
           <div class="summary" style="gap:10px;">
-            ${drinkParts.length?`<div><strong>Drinks:</strong> ${drinkParts.join(', ')}</div>`:''}
-            ${waffleParts.length?`<div><strong>Waffles:</strong> ${waffleParts.join(', ')}</div>`:''}
-            ${iceCreamParts.length?`<div><strong>Ice Cream:</strong> ${iceCreamParts.join(', ')}</div>`:''}
+            ${parts}
+            ${fixedInfo}
             ${info?`<div class="small muted">${info}</div>`:''}
           </div>`;
-        comboPrev.style.display='none';
-        comboNext.textContent='Add to Cart';
-        comboNext.disabled=false;
+        comboPrev.style.display = choiceSteps.length ? 'inline-flex' : 'none';
+        comboNext.textContent = 'Add to Cart';
+        comboNext.disabled = false;
       };
 
-      comboPrev.onclick=()=>{};
-      comboNext.onclick=()=>{
-        if(step==='drinks'){
-          step = hasWaffleStep ? 'waffles' : (hasIceCreamStep ? 'icecream' : 'confirm');
-          if(step==='waffles') renderWaffleGrid();
-          else if(step==='icecream') renderIceCreamGrid();
+      comboPrev.onclick = () => {
+        if(stepIndex > 0){ stepIndex--; renderChoiceGrid(); }
+      };
+
+      comboNext.onclick = () => {
+        if(stepIndex < choiceSteps.length){
+          stepIndex++;
+          if(stepIndex < choiceSteps.length) renderChoiceGrid();
           else renderConfirm();
           return;
         }
-        if(step==='waffles'){
-          step = hasIceCreamStep ? 'icecream' : 'confirm';
-          if(step==='icecream') renderIceCreamGrid(); else renderConfirm();
-          return;
-        }
-        if(step==='icecream'){
-          step='confirm';
-          renderConfirm();
+
+        const metaParts = choiceSteps.map((comp,i) => {
+          const list = Object.entries(stepCounts[i]).filter(([,c])=>c>0).map(([id,c])=>`${fmt(id)} x${c}`);
+          return list.length ? `${comp.label||'Items'}: ${list.join(', ')}` : '';
+        }).filter(Boolean).join(' | ');
+
+        // If this exact same meal (same item + same choices) is already in the cart, stack onto it
+        // instead of creating a second, separate group.
+        const existingBundleLine = state.cart.find(l => l.groupId && l.id===item.id && l.meta===metaParts && !l.noMerge);
+
+        if(existingBundleLine){
+          const gid = existingBundleLine.groupId;
+          existingBundleLine.qty += orderQty;
+
+          choiceSteps.forEach((comp,i) => {
+            Object.entries(stepCounts[i]).filter(([,c])=>c>0).forEach(([id,c]) => {
+              const line = state.cart.find(l => l.groupId===gid && l.id===id && l.noMerge);
+              if(line) line.qty += c*orderQty;
+            });
+          });
+
+          fixedSteps.forEach(comp => {
+            const line = state.cart.find(l => l.groupId===gid && l.id===comp.itemId && l.noMerge);
+            if(line) line.qty += comp.qty*orderQty;
+          });
+
+          renderCart(); renderTotals(); renderIngredients(); renderItemTotals();
+          comboModal.close();
           return;
         }
 
-        const fmt=id=>(findMenuItem(id)||{}).name||id;
-        const drinkParts=Object.entries(counts).filter(([,c])=>c>0).map(([id,c])=>`${fmt(id)} x${c}`);
-        const meta=drinkParts.length?`Drinks: ${drinkParts.join(', ')}`:'';
         const groupId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        addToCart({
-          id:item.id,
-          name:item.name,
-          unitPrice:item.price,
-          qty:qty||1,
-          type:item.type,
-          meta,
-          groupId
+
+        addToCart({ id:item.id, name:item.name, unitPrice:item.price, qty:orderQty, type:item.type, meta:metaParts, groupId });
+
+        choiceSteps.forEach((comp,i) => {
+          Object.entries(stepCounts[i]).filter(([,c])=>c>0).forEach(([id,c]) => {
+            const it = findMenuItem(id);
+            addToCart({ id, name:`${it?it.name:id}`, unitPrice:0, qty:c*orderQty, type: it?.type || 'extra', meta:item.name, noMerge:true, groupId });
+          });
         });
 
-        Object.entries(counts).filter(([,c])=>c>0).forEach(([drinkId,c])=>{
-          const drinkItem = findMenuItem(drinkId);
-          addToCart({ id:drinkId, name:`${drinkItem?drinkItem.name:drinkId} (Included)`, unitPrice:0, qty:c*(qty||1), type:'drink', meta:item.name, noMerge:true, groupId });
+        fixedSteps.forEach(comp => {
+          const it = findMenuItem(comp.itemId);
+          addToCart({ id:comp.itemId, name:`${it?it.name:comp.itemId}`, unitPrice:0, qty:comp.qty*orderQty, type: it?.type || 'extra', meta:item.name, noMerge:true, groupId });
         });
-
-        if(hasWaffleStep){
-          Object.entries(waffleCounts).filter(([,c])=>c>0).forEach(([waffleId,c])=>{
-            const waffleItem = findMenuItem(waffleId);
-            addToCart({ id:waffleId, name:`${waffleItem?waffleItem.name:waffleId} (Included)`, unitPrice:0, qty:c*(qty||1), type:'extra', meta:item.name, noMerge:true, groupId });
-          });
-        } else {
-          const waffles =
-            item.id==='bd-med' ? 5 :
-            (['bd-large','pk-beanbox','rf-beanbox'].includes(item.id) ? 10 :
-            (item.id==='bd-bigboy' ? 20 : 0));
-          if(waffles>0) addToCart({ id:'ex-waffle', name:'🧇 Wonder Waffle (Included)', unitPrice:0, qty:waffles*(qty||1), type:'extra', meta:'Meal', noMerge:true, groupId });
-        }
-
-        if(hasIceCreamStep){
-          Object.entries(iceCreamCounts).filter(([,c])=>c>0).forEach(([iceId,c])=>{
-            const iceItem = findMenuItem(iceId);
-            addToCart({ id:iceId, name:`${iceItem?iceItem.name:iceId} (Included)`, unitPrice:0, qty:c*(qty||1), type:'extra', meta:item.name, noMerge:true, groupId });
-          });
-        }
-
-        if(item.id==='pk-beanbox'){
-          addToCart({ id:'ex-lunch', name:'🍱 Lunch Box (Included)', unitPrice:0, qty:1*(qty||1), type:'extra', meta:'Bean Box', noMerge:true, groupId });
-        }
 
         comboModal.close();
       };
 
-      renderGrid();
+      if(choiceSteps.length) renderChoiceGrid();
+      else renderConfirm();
       comboModal.showModal();
     }
+
 
     // ---------- Catering combo wizard (e.g. Party Pack: pick flavoured waffles + cakes) ----------
     function openCateringComboWizard(item, qty){
@@ -1869,15 +1705,15 @@
           const subItems = [
             ...Object.entries(comp).map(([compId,compQty])=>{
               const compItem = findMenuItem(compId);
-              return { id:compId, name:`${compItem?compItem.name:compId} (Included)`, perQty:compQty, type:compItem?.type||'extra' };
+              return { id:compId, name:`${compItem?compItem.name:compId}`, perQty:compQty, type:compItem?.type||'extra' };
             }),
             ...Object.entries(waffleCounts).filter(([,c])=>c>0).map(([waffleId,c])=>{
               const waffleItem = findMenuItem(waffleId);
-              return { id:waffleId, name:`${waffleItem?waffleItem.name:waffleId} (Included)`, perQty:c, type:'extra' };
+              return { id:waffleId, name:`${waffleItem?waffleItem.name:waffleId}`, perQty:c, type:'extra' };
             }),
             ...Object.entries(cakeCounts).filter(([,c])=>c>0).map(([cakeId,c])=>{
               const cakeItem = findMenuItem(cakeId);
-              return { id:cakeId, name:`${cakeItem?cakeItem.name:cakeId} (Included)`, perQty:c, type:'extra' };
+              return { id:cakeId, name:`${cakeItem?cakeItem.name:cakeId}`, perQty:c, type:'extra' };
             }),
           ];
           addOrStackCateringPackage(item, q, subItems);
@@ -2040,6 +1876,22 @@
 
     document.getElementById('checkoutBtn2').addEventListener('click',checkout);
     document.getElementById('resetBtn2').addEventListener('click',resetAll);
+
+    let pendingRemoveMealGroupId = null;
+    function openRemoveMealConfirm(groupId){
+      pendingRemoveMealGroupId = groupId;
+      document.getElementById('removeMealModal').showModal();
+    }
+    document.getElementById('closeRemoveMealModal').addEventListener('click',()=>document.getElementById('removeMealModal').close());
+    document.getElementById('cancelRemoveMealBtn').addEventListener('click',()=>document.getElementById('removeMealModal').close());
+    document.getElementById('confirmRemoveMealBtn').addEventListener('click',()=>{
+      if(pendingRemoveMealGroupId){
+        state.cart = state.cart.filter(l => l.groupId !== pendingRemoveMealGroupId);
+        renderCart(); renderTotals(); renderIngredients(); renderItemTotals();
+      }
+      pendingRemoveMealGroupId = null;
+      document.getElementById('removeMealModal').close();
+    });
 
     const themeBtn=document.getElementById('themeBtn');
     let currentTheme = savedTheme;
