@@ -221,13 +221,8 @@
     <div class="panel">
       <h2>🧾 Ingredients</h2>
       <div class="content">
-        <div class="small">Add ingredients here so they're available to use when building recipes below. Giving one a price also makes it show up with a cost on the ingredient list.</div>
-        <div style="display:grid;grid-template-columns:1fr 120px auto;gap:8px;">
-          <input type="text" id="newIngredientName" placeholder="Ingredient name (e.g. Vanilla Syrup)">
-          <input type="number" id="newIngredientPrice" placeholder="Price $" min="0" step="0.01">
-          <button class="btn primary" id="addIngredientBtn">Add</button>
-        </div>
-        <div id="ingredientsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div class="small">Add ingredients so they're available to use when building recipes, and set prices for the ingredient cost list.</div>
+        <button class="btn" id="openIngredientsBtn" style="align-self:flex-start;">🧾 Open Ingredients</button>
       </div>
     </div>
 
@@ -235,16 +230,43 @@
       <h2>📋 Recipes</h2>
       <div class="content">
         <div class="small">Pick an item to add or edit what ingredients (and how many) it takes to make.</div>
-        <div class="toolrow" id="recipeCategoryButtons" style="justify-content:flex-start;">
-          <button class="btn" data-recipe-category="classic">☕ Drinks</button>
-          <button class="btn" data-recipe-category="iceCream">🍦 Food (Ice Cream)</button>
-          <button class="btn" data-recipe-category="extras">🧁 Bakes &amp; Treats</button>
-          <button class="btn" data-recipe-category="bundles">🥐 Meals &amp; Bundles</button>
-        </div>
-        <div id="recipeItemsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <button class="btn" id="openRecipesBtn" style="align-self:flex-start;">📋 Open Recipes</button>
       </div>
     </div>
   </div>
+
+  <dialog id="ingredientsModal" style="width:min(520px,94vw);">
+    <div class="modal-header">
+      <strong>🧾 Ingredients</strong>
+      <button class="btn" id="closeIngredientsModal" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="small">Add ingredients so they're available to use when building recipes, and set prices for the ingredient cost list.</div>
+      <div style="display:grid;grid-template-columns:1fr 120px auto;gap:8px;">
+        <input type="text" id="newIngredientName" placeholder="Ingredient name (e.g. Vanilla Syrup)">
+        <input type="number" id="newIngredientPrice" placeholder="Price $" min="0" step="0.01">
+        <button class="btn primary" id="addIngredientBtn">Add</button>
+      </div>
+      <div id="ingredientsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </dialog>
+
+  <dialog id="recipesModal" style="width:min(520px,94vw);">
+    <div class="modal-header">
+      <strong>📋 Recipes</strong>
+      <button class="btn" id="closeRecipesModal" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="small">Pick an item to add or edit what ingredients (and how many) it takes to make.</div>
+      <div class="toolrow" id="recipeCategoryButtons" style="justify-content:flex-start;">
+        <button class="btn" data-recipe-category="classic">☕ Drinks</button>
+        <button class="btn" data-recipe-category="iceCream">🍦 Food (Ice Cream)</button>
+        <button class="btn" data-recipe-category="extras">🧁 Bakes &amp; Treats</button>
+        <button class="btn" data-recipe-category="bundles">🥐 Meals &amp; Bundles</button>
+      </div>
+      <div id="recipeItemsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+  </dialog>
 
   <dialog id="recipeEditModal" style="width:min(520px,94vw);">
     <div class="modal-header">
@@ -1097,6 +1119,14 @@
 
   const shopSettingsModal = document.getElementById('shopSettingsModal');
   document.getElementById('openShopSettingsBtn').addEventListener('click', () => shopSettingsModal.showModal());
+
+  const ingredientsModal = document.getElementById('ingredientsModal');
+  document.getElementById('openIngredientsBtn').addEventListener('click', () => ingredientsModal.showModal());
+  document.getElementById('closeIngredientsModal').addEventListener('click', () => ingredientsModal.close());
+
+  const recipesModal = document.getElementById('recipesModal');
+  document.getElementById('openRecipesBtn').addEventListener('click', () => recipesModal.showModal());
+  document.getElementById('closeRecipesModal').addEventListener('click', () => recipesModal.close());
   document.getElementById('closeShopSettingsModal').addEventListener('click', () => shopSettingsModal.close());
 
   document.getElementById('addTierBtn').addEventListener('click', () => {
