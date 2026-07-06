@@ -402,33 +402,49 @@
 
   <script src="menu-data.js"></script>
   <script>
+  (async function(){
     // ---------- Data (MENU comes from menu-data.js, shared with admin.html) ----------
-    // ---------- Manage Menu: locally-saved custom items merge into MENU on load ----------
-    // (Local to this device/browser for now — will move to shared storage once the admin login is built.)
-    const CUSTOM_MENU_KEY = 'bean_custom_menu_v1';
-    let customMenuItems = [];
-    try{
-      customMenuItems = JSON.parse(localStorage.getItem(CUSTOM_MENU_KEY) || '[]');
-      if(!Array.isArray(customMenuItems)) customMenuItems = [];
-    }catch{ customMenuItems = []; }
+    // Shared menu state (custom items, price overrides, deletions, shop settings) now
+    // lives in Supabase, so every device sees the same live menu. This is a public,
+    // read-only fetch — only admin.html can write, and only after the Discord Owner
+    // login check.
+    const SUPABASE_URL = 'https://gpaqlehknskrcthyaapo.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwYXFsZWhrbnNrcmN0aHlhYXBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjQwMjEsImV4cCI6MjA5ODI0MDAyMX0.pVsGNoYVNsh6w0RTTCajtveVJ12wgxxgP1Vqhl2EOxQ';
 
+    let customMenuItems = [];
+    let menuOverrides = {};
+    let deletedItemIds = [];
+
+    try{
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/bean_menu_state?id=eq.1&select=*`, {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
+      });
+      if(!res.ok) throw new Error(`Supabase read failed: ${res.status}`);
+      const rows = await res.json();
+      const row = rows[0] || {};
+
+      customMenuItems = Array.isArray(row.custom_items) ? row.custom_items : [];
+      menuOverrides = (row.overrides && typeof row.overrides === 'object') ? row.overrides : {};
+      deletedItemIds = Array.isArray(row.deleted_ids) ? row.deleted_ids : [];
+
+      if(row.shop_settings && Array.isArray(row.shop_settings.discountTiers)){
+        SHOP_SETTINGS.discountTiers = row.shop_settings.discountTiers;
+      }
+      if(row.shop_settings && Array.isArray(row.shop_settings.deliveryZones)){
+        SHOP_SETTINGS.deliveryZones = row.shop_settings.deliveryZones;
+      }
+    }catch(err){
+      console.error('Failed to load shared menu state, falling back to defaults:', err);
+      // Fall back to whatever menu-data.js ships with — the calculator still works,
+      // it just won't reflect any admin-panel changes until the connection recovers.
+    }
+
+    // ---------- Manage Menu: custom items merge into MENU ----------
     customMenuItems.forEach(entry => {
       if(MENU[entry.category]) MENU[entry.category].push(entry.item);
     });
 
-    function saveCustomMenuItems(){
-      localStorage.setItem(CUSTOM_MENU_KEY, JSON.stringify(customMenuItems));
-    }
-
-    // ---------- Manage Menu: locally-saved overrides for EXISTING catalog items ----------
-    // Keyed by item id -> { name?, price?, description?, drinksIncluded? }. Original menu-data.js is never rewritten.
-    const MENU_OVERRIDES_KEY = 'bean_menu_overrides_v1';
-    let menuOverrides = {};
-    try{
-      menuOverrides = JSON.parse(localStorage.getItem(MENU_OVERRIDES_KEY) || '{}');
-      if(typeof menuOverrides !== 'object' || !menuOverrides) menuOverrides = {};
-    }catch{ menuOverrides = {}; }
-
+    // ---------- Manage Menu: overrides for existing catalog items ----------
     Object.keys(menuOverrides).forEach(id => {
       const override = menuOverrides[id];
       Object.values(MENU).forEach(arr => {
@@ -438,14 +454,7 @@
       });
     });
 
-    // ---------- Manage Menu: locally-deleted items/bundles are hidden (not removed from menu-data.js) ----------
-    const DELETED_ITEMS_KEY = 'bean_deleted_items_v1';
-    let deletedItemIds = [];
-    try{
-      deletedItemIds = JSON.parse(localStorage.getItem(DELETED_ITEMS_KEY) || '[]');
-      if(!Array.isArray(deletedItemIds)) deletedItemIds = [];
-    }catch{ deletedItemIds = []; }
-
+    // ---------- Manage Menu: deleted items/bundles are hidden (not removed from menu-data.js) ----------
     if(deletedItemIds.length){
       const deletedSet = new Set(deletedItemIds);
       Object.keys(MENU).forEach(cat => {
@@ -454,14 +463,6 @@
     }
 
     // ---------- Manage Menu: shop settings (discount tiers & delivery zone fees) ----------
-    // Defaults come from SHOP_SETTINGS in menu-data.js; admin.html saves overrides here.
-    const SHOP_SETTINGS_KEY = 'bean_shop_settings_v1';
-    try{
-      const savedSettings = JSON.parse(localStorage.getItem(SHOP_SETTINGS_KEY) || '{}');
-      if(Array.isArray(savedSettings.discountTiers)) SHOP_SETTINGS.discountTiers = savedSettings.discountTiers;
-      if(Array.isArray(savedSettings.deliveryZones)) SHOP_SETTINGS.deliveryZones = savedSettings.deliveryZones;
-    }catch{}
-
     const ZONE_FEES = {};
     SHOP_SETTINGS.deliveryZones.forEach(z => { ZONE_FEES[z.key] = z.fee; });
 
@@ -597,8 +598,10 @@
     })();
 
     // ---------- Supabase (order history) ----------
-    const SUPABASE_URL = 'https://gpaqlehknskrcthyaapo.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwYXFsZWhrbnNrcmN0aHlhYXBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjQwMjEsImV4cCI6MjA5ODI0MDAyMX0.pVsGNoYVNsh6w0RTTCajtveVJ12wgxxgP1Vqhl2EOxQ';
+    // SUPABASE_URL and SUPABASE_ANON_KEY are already declared near the top of this
+    // script (used for loading the shared menu state) — reused here as SUPABASE_KEY
+    // so the rest of this section doesn't need renaming.
+    const SUPABASE_KEY = SUPABASE_ANON_KEY;
 
     // The artifact viewer relays fetch() via postMessage/structured-clone, which can't
     // clone a Headers instance. supabase-js builds one internally, so we hand it a
@@ -1918,6 +1921,7 @@
     // ---------- Init: render everything on page load ----------
     renderAll();
     refreshHistoryFromStorage();
+  })();
   </script>
 </body>
 </html>

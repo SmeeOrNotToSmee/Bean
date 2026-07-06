@@ -312,34 +312,115 @@
 
   // ---------- MENU comes from menu-data.js, shared with index.html ----------
   const currency = n => '$' + Number(n).toFixed(2);
-  const CUSTOM_MENU_KEY = 'bean_custom_menu_v1';
   const THEME_KEY = 'mc_theme_bean'; // separate, harmless if it doesn't match main page's key
 
-  let customMenuItems = [];
-  try{
-    customMenuItems = JSON.parse(localStorage.getItem(CUSTOM_MENU_KEY) || '[]');
-    if(!Array.isArray(customMenuItems)) customMenuItems = [];
-  }catch{ customMenuItems = []; }
+  // ---------- Shared menu state now lives in Supabase, not localStorage ----------
+  // Reading is public (same anon key everyone already has). Writing goes through
+  // the menu-write Edge Function, which checks the Discord Owner session token
+  // before touching the shared table.
+  const SUPABASE_URL = 'https://gpaqlehknskrcthyaapo.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdwYXFsZWhrbnNrcmN0aHlhYXBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NjQwMjEsImV4cCI6MjA5ODI0MDAyMX0.pVsGNoYVNsh6w0RTTCajtveVJ12wgxxgP1Vqhl2EOxQ';
+  const MENU_WRITE_URL = 'https://gpaqlehknskrcthyaapo.supabase.co/functions/v1/menu-write';
 
-  // Merge previously-added custom items into the live MENU so they show up for editing here too.
-  customMenuItems.forEach(entry => {
-    if(MENU[entry.category]) MENU[entry.category].push(entry.item);
-  });
+  let customMenuItems = [];
+  let menuOverrides = {};
+  let deletedItemIds = [];
+
+  // Pristine copy of the shop settings shipped in menu-data.js, captured before
+  // any server-saved overrides are applied — used by "Reset to Defaults".
+  const DEFAULT_SHOP_SETTINGS = JSON.parse(JSON.stringify(SHOP_SETTINGS));
+
+  let stateLoaded = false;
+  let stateLoadFailed = false;
+
+  async function loadStateFromServer(){
+    try{
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/bean_menu_state?id=eq.1&select=*`, {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
+      });
+      if(!res.ok) throw new Error(`Supabase read failed: ${res.status}`);
+      const rows = await res.json();
+      const row = rows[0] || {};
+
+      customMenuItems = Array.isArray(row.custom_items) ? row.custom_items : [];
+      menuOverrides = (row.overrides && typeof row.overrides === 'object') ? row.overrides : {};
+      deletedItemIds = Array.isArray(row.deleted_ids) ? row.deleted_ids : [];
+
+      if(row.shop_settings && Array.isArray(row.shop_settings.discountTiers)){
+        SHOP_SETTINGS.discountTiers = row.shop_settings.discountTiers;
+      }
+      if(row.shop_settings && Array.isArray(row.shop_settings.deliveryZones)){
+        SHOP_SETTINGS.deliveryZones = row.shop_settings.deliveryZones;
+      }
+
+      // Merge custom items into the live MENU so they show up for editing here too.
+      customMenuItems.forEach(entry => {
+        if(MENU[entry.category]) MENU[entry.category].push(entry.item);
+      });
+
+      // Apply saved price/name/description/component overrides on top of the defaults.
+      Object.keys(menuOverrides).forEach(id => {
+        const override = menuOverrides[id];
+        Object.values(MENU).forEach(arr => {
+          if(!Array.isArray(arr)) return;
+          const item = arr.find(i => i.id === id);
+          if(item) Object.assign(item, override);
+        });
+      });
+
+      stateLoaded = true;
+    }catch(err){
+      console.error('Failed to load shared menu state:', err);
+      stateLoadFailed = true;
+      alert('Could not load the shared menu data from the server. You can still browse, but changes may not save correctly until this is fixed — check your connection and try refreshing.');
+    }
+
+    // Working copies for the Shop Settings editor need to reflect whatever we just loaded.
+    workingDiscountTiers = SHOP_SETTINGS.discountTiers.map(t => ({...t}));
+    workingDeliveryZones = SHOP_SETTINGS.deliveryZones.map(z => ({...z}));
+
+    renderCustomList();
+    renderEditList();
+    renderBundlesList();
+    renderDeletedList();
+    renderDiscountTiersList();
+    renderDeliveryZonesList();
+  }
+
+  async function syncStateToServer(){
+    const token = localStorage.getItem(SESSION_KEY);
+    try{
+      const res = await fetch(MENU_WRITE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          custom_items: customMenuItems,
+          overrides: menuOverrides,
+          deleted_ids: deletedItemIds,
+          shop_settings: { discountTiers: SHOP_SETTINGS.discountTiers, deliveryZones: SHOP_SETTINGS.deliveryZones }
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok){
+        alert(data.error || 'Failed to save your change to the server. It may not show up for other devices — try again, and log in again if this keeps happening.');
+        return false;
+      }
+      return true;
+    }catch(err){
+      console.error('Failed to sync menu state:', err);
+      alert('Could not reach the server to save your change. Check your connection and try again.');
+      return false;
+    }
+  }
 
   function saveCustomMenuItems(){
-    localStorage.setItem(CUSTOM_MENU_KEY, JSON.stringify(customMenuItems));
+    syncStateToServer();
   }
 
   // ---------- Deleted items/bundles: hidden everywhere, but restorable (menu-data.js is never touched) ----------
-  const DELETED_ITEMS_KEY = 'bean_deleted_items_v1';
-  let deletedItemIds = [];
-  try{
-    deletedItemIds = JSON.parse(localStorage.getItem(DELETED_ITEMS_KEY) || '[]');
-    if(!Array.isArray(deletedItemIds)) deletedItemIds = [];
-  }catch{ deletedItemIds = []; }
-
   function saveDeletedItemIds(){
-    localStorage.setItem(DELETED_ITEMS_KEY, JSON.stringify(deletedItemIds));
+    syncStateToServer();
   }
 
   function isDeleted(id){
@@ -509,18 +590,9 @@
     applyTheme((localStorage.getItem(THEME_KEY) || 'dark') === 'dark' ? 'light' : 'dark');
   });
 
-  renderCustomList();
-
   // ---------- Edit Existing Items & Bundles ----------
-  const MENU_OVERRIDES_KEY = 'bean_menu_overrides_v1';
-  let menuOverrides = {};
-  try{
-    menuOverrides = JSON.parse(localStorage.getItem(MENU_OVERRIDES_KEY) || '{}');
-    if(typeof menuOverrides !== 'object' || !menuOverrides) menuOverrides = {};
-  }catch{ menuOverrides = {}; }
-
   function saveMenuOverrides(){
-    localStorage.setItem(MENU_OVERRIDES_KEY, JSON.stringify(menuOverrides));
+    syncStateToServer();
   }
 
   const editCategoryButtons = document.getElementById('editCategoryButtons');
@@ -802,15 +874,6 @@
   });
 
   // ---------- Shop Settings (discount tiers & delivery zone fees) ----------
-  const SHOP_SETTINGS_KEY = 'bean_shop_settings_v1';
-  const DEFAULT_SHOP_SETTINGS = JSON.parse(JSON.stringify(SHOP_SETTINGS)); // pristine copy, from menu-data.js, for Reset to Defaults
-
-  try{
-    const savedSettings = JSON.parse(localStorage.getItem(SHOP_SETTINGS_KEY) || '{}');
-    if(Array.isArray(savedSettings.discountTiers)) SHOP_SETTINGS.discountTiers = savedSettings.discountTiers;
-    if(Array.isArray(savedSettings.deliveryZones)) SHOP_SETTINGS.deliveryZones = savedSettings.deliveryZones;
-  }catch{}
-
   let workingDiscountTiers = SHOP_SETTINGS.discountTiers.map(t => ({...t}));
   let workingDeliveryZones = SHOP_SETTINGS.deliveryZones.map(z => ({...z}));
 
@@ -868,7 +931,7 @@
     renderDeliveryZonesList();
   });
 
-  document.getElementById('saveShopSettingsBtn').addEventListener('click', () => {
+  document.getElementById('saveShopSettingsBtn').addEventListener('click', async () => {
     const cleanTiers = workingDiscountTiers
       .map(t => ({ label: (t.label||'').trim() || `${t.pct}%`, pct: Math.max(1, Math.min(100, Number(t.pct)||0)) }))
       .filter(t => t.pct > 0);
@@ -878,32 +941,29 @@
 
     SHOP_SETTINGS.discountTiers = cleanTiers;
     SHOP_SETTINGS.deliveryZones = cleanZones;
-    localStorage.setItem(SHOP_SETTINGS_KEY, JSON.stringify({ discountTiers: cleanTiers, deliveryZones: cleanZones }));
+
+    const ok = await syncStateToServer();
 
     workingDiscountTiers = cleanTiers.map(t => ({...t}));
     workingDeliveryZones = cleanZones.map(z => ({...z}));
     renderDiscountTiersList();
     renderDeliveryZonesList();
-    alert('Shop settings saved.');
+    if(ok) alert('Shop settings saved for everyone.');
   });
 
-  document.getElementById('resetShopSettingsBtn').addEventListener('click', () => {
-    if(!confirm('Reset discount tiers and delivery zones back to the original defaults?')) return;
-    localStorage.removeItem(SHOP_SETTINGS_KEY);
+  document.getElementById('resetShopSettingsBtn').addEventListener('click', async () => {
+    if(!confirm('Reset discount tiers and delivery zones back to the original defaults for everyone?')) return;
     SHOP_SETTINGS.discountTiers = JSON.parse(JSON.stringify(DEFAULT_SHOP_SETTINGS.discountTiers));
     SHOP_SETTINGS.deliveryZones = JSON.parse(JSON.stringify(DEFAULT_SHOP_SETTINGS.deliveryZones));
+    await syncStateToServer();
     workingDiscountTiers = SHOP_SETTINGS.discountTiers.map(t => ({...t}));
     workingDeliveryZones = SHOP_SETTINGS.deliveryZones.map(z => ({...z}));
     renderDiscountTiersList();
     renderDeliveryZonesList();
   });
 
-  renderDiscountTiersList();
-  renderDeliveryZonesList();
-
-  renderEditList();
-  renderBundlesList();
-  renderDeletedList();
+  // Initial data load: fetch the shared state from Supabase, then render everything.
+  loadStateFromServer();
 </script>
 </body>
 </html>
