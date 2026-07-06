@@ -59,6 +59,10 @@
     .modal-body{padding:16px;display:flex;flex-direction:column;gap:12px;max-height:75vh;overflow-y:auto}
     .bundle-button{width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px}
     .bundle-button.overridden{border-color:var(--accent)}
+    .recipe-row{display:grid;grid-template-columns:1fr 90px auto;gap:8px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--chip)}
+    .recipe-row input{padding:7px 9px;font-size:.85rem}
+    .recipe-item-button{width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px}
+    .recipe-item-button.has-recipe{border-color:var(--accent)}
     .settings-row{display:grid;grid-template-columns:1fr 100px auto;gap:8px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--card)}
     .settings-row input{padding:7px 9px;font-size:.9rem}
     .toolrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
@@ -213,7 +217,42 @@
         <button class="btn" id="openShopSettingsBtn" style="align-self:flex-start;">⚙️ Open Shop Settings</button>
       </div>
     </div>
+
+    <div class="panel">
+      <h2>🧾 Ingredients</h2>
+      <div class="content">
+        <div class="small">Add ingredients here so they're available to use when building recipes below. Giving one a price also makes it show up with a cost on the ingredient list.</div>
+        <div style="display:grid;grid-template-columns:1fr 120px auto;gap:8px;">
+          <input type="text" id="newIngredientName" placeholder="Ingredient name (e.g. Vanilla Syrup)">
+          <input type="number" id="newIngredientPrice" placeholder="Price $" min="0" step="0.01">
+          <button class="btn primary" id="addIngredientBtn">Add</button>
+        </div>
+        <div id="ingredientsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>📋 Recipes</h2>
+      <div class="content">
+        <div class="small">Pick an item to add or edit what ingredients (and how many) it takes to make.</div>
+        <div class="toolrow" id="recipeCategoryButtons" style="justify-content:flex-start;">
+          <button class="btn" data-recipe-category="classic">☕ Drinks</button>
+          <button class="btn" data-recipe-category="iceCream">🍦 Food (Ice Cream)</button>
+          <button class="btn" data-recipe-category="extras">🧁 Bakes &amp; Treats</button>
+          <button class="btn" data-recipe-category="bundles">🥐 Meals &amp; Bundles</button>
+        </div>
+        <div id="recipeItemsList" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </div>
   </div>
+
+  <dialog id="recipeEditModal" style="width:min(520px,94vw);">
+    <div class="modal-header">
+      <strong id="recipeEditModalTitle">Edit Recipe</strong>
+      <button class="btn" id="closeRecipeEditModal" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" id="recipeEditModalBody"></div>
+  </dialog>
 
   <dialog id="shopSettingsModal" style="width:min(560px,94vw);">
     <div class="modal-header">
@@ -402,10 +441,14 @@
   let customMenuItems = [];
   let menuOverrides = {};
   let deletedItemIds = [];
+  let recipeOverrides = {};
+  let customIngredients = [];
 
   // Pristine copy of the shop settings shipped in menu-data.js, captured before
   // any server-saved overrides are applied — used by "Reset to Defaults".
   const DEFAULT_SHOP_SETTINGS = JSON.parse(JSON.stringify(SHOP_SETTINGS));
+  // Same idea for recipes — used by "Reset Recipe to Default".
+  const DEFAULT_RECIPE_MAP = JSON.parse(JSON.stringify(RECIPE_MAP));
 
   let stateLoaded = false;
   let stateLoadFailed = false;
@@ -422,6 +465,8 @@
       customMenuItems = Array.isArray(row.custom_items) ? row.custom_items : [];
       menuOverrides = (row.overrides && typeof row.overrides === 'object') ? row.overrides : {};
       deletedItemIds = Array.isArray(row.deleted_ids) ? row.deleted_ids : [];
+      recipeOverrides = (row.recipe_overrides && typeof row.recipe_overrides === 'object') ? row.recipe_overrides : {};
+      customIngredients = Array.isArray(row.custom_ingredients) ? row.custom_ingredients : [];
 
       if(row.shop_settings && Array.isArray(row.shop_settings.discountTiers)){
         SHOP_SETTINGS.discountTiers = row.shop_settings.discountTiers;
@@ -445,6 +490,16 @@
         });
       });
 
+      // Apply recipe overrides/additions on top of RECIPE_MAP.
+      Object.entries(recipeOverrides).forEach(([itemId, recipe]) => {
+        RECIPE_MAP[itemId] = recipe;
+      });
+
+      // Apply custom ingredient prices on top of INGREDIENT_PRICES.
+      customIngredients.forEach(ing => {
+        if(ing && ing.name) INGREDIENT_PRICES[ing.name] = Number(ing.price) || 0;
+      });
+
       stateLoaded = true;
     }catch(err){
       console.error('Failed to load shared menu state:', err);
@@ -462,6 +517,8 @@
     renderDeletedList();
     renderDiscountTiersList();
     renderDeliveryZonesList();
+    renderIngredientsList();
+    renderRecipeItemsList();
   }
 
   async function syncStateToServer(){
@@ -475,7 +532,9 @@
           custom_items: customMenuItems,
           overrides: menuOverrides,
           deleted_ids: deletedItemIds,
-          shop_settings: { discountTiers: SHOP_SETTINGS.discountTiers, deliveryZones: SHOP_SETTINGS.deliveryZones }
+          shop_settings: { discountTiers: SHOP_SETTINGS.discountTiers, deliveryZones: SHOP_SETTINGS.deliveryZones },
+          recipe_overrides: recipeOverrides,
+          custom_ingredients: customIngredients
         })
       });
       const data = await res.json().catch(() => ({}));
@@ -1082,7 +1141,219 @@
     }, 'Reset Shop Settings?');
   });
 
-  // Initial data load: fetch the shared state from Supabase, then render everything.
+  // ---------- Ingredients ----------
+  function allKnownIngredientNames(){
+    const names = new Set(Object.keys(INGREDIENT_PRICES));
+    Object.values(RECIPE_MAP).forEach(recipe => Object.keys(recipe).forEach(n => names.add(n)));
+    return [...names].sort((a,b) => a.localeCompare(b));
+  }
+
+  function renderIngredientsList(){
+    const list = document.getElementById('ingredientsList');
+    const names = allKnownIngredientNames();
+
+    if(!names.length){
+      list.innerHTML = '<div class="empty">No ingredients yet.</div>';
+      return;
+    }
+
+    list.innerHTML = names.map(name => {
+      const price = INGREDIENT_PRICES[name];
+      const isCustom = customIngredients.some(i => i.name === name);
+      return `
+        <div class="custom-row">
+          <div>
+            <strong>${name}</strong>
+            <div class="meta">${price ? currency(price) : 'No price set'}</div>
+          </div>
+          ${isCustom ? `<button class="btn danger" data-remove-ingredient="${name.replace(/"/g,'&quot;')}">Remove</button>` : ''}
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('[data-remove-ingredient]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        showAdminConfirm(`Remove "${btn.dataset.removeIngredient}" from the ingredients list? Any recipes using it will keep the name, just without a set price.`, () => {
+          const name = btn.dataset.removeIngredient;
+          customIngredients = customIngredients.filter(i => i.name !== name);
+          delete INGREDIENT_PRICES[name];
+          syncStateToServer();
+          renderIngredientsList();
+        }, 'Remove Ingredient?');
+      });
+    });
+  }
+
+  document.getElementById('addIngredientBtn').addEventListener('click', () => {
+    const nameInput = document.getElementById('newIngredientName');
+    const priceInput = document.getElementById('newIngredientPrice');
+    const name = nameInput.value.trim();
+    const price = Number(priceInput.value) || 0;
+
+    if(!name){
+      nameInput.style.borderColor = '#e63946';
+      return;
+    }
+    nameInput.style.borderColor = '';
+
+    const existing = customIngredients.find(i => i.name === name);
+    if(existing) existing.price = price;
+    else customIngredients.push({ name, price });
+
+    INGREDIENT_PRICES[name] = price;
+    syncStateToServer();
+    renderIngredientsList();
+    renderRecipeItemsList();
+
+    nameInput.value = '';
+    priceInput.value = '';
+  });
+
+  // ---------- Recipes ----------
+  let activeRecipeCategory = null;
+
+  function findAnyMenuItemById(id){
+    for(const arr of Object.values(MENU)){
+      if(!Array.isArray(arr)) continue;
+      const found = arr.find(i => i.id === id);
+      if(found) return found;
+    }
+    return null;
+  }
+
+  function renderRecipeItemsList(){
+    const list = document.getElementById('recipeItemsList');
+    if(!activeRecipeCategory){ list.innerHTML = ''; return; }
+
+    const items = MENU[activeRecipeCategory] || [];
+    if(!items.length){
+      list.innerHTML = '<div class="empty">No items in this category.</div>';
+      return;
+    }
+
+    list.innerHTML = items.map(raw => {
+      const item = effectiveItem(raw);
+      const hasRecipe = !!RECIPE_MAP[raw.id];
+      return `
+        <button class="btn recipe-item-button ${hasRecipe ? 'has-recipe' : ''}" data-recipe-item="${raw.id}">
+          <span>${item.name}</span>
+          ${hasRecipe ? '<span class="override-tag">Has Recipe</span>' : '<span class="muted" style="font-size:.78rem;">No recipe</span>'}
+        </button>`;
+    }).join('');
+
+    list.querySelectorAll('[data-recipe-item]').forEach(btn => {
+      btn.addEventListener('click', () => openRecipeEditModal(btn.dataset.recipeItem));
+    });
+  }
+
+  document.getElementById('recipeCategoryButtons').querySelectorAll('[data-recipe-category]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const category = btn.dataset.recipeCategory;
+      activeRecipeCategory = activeRecipeCategory === category ? null : category;
+      document.getElementById('recipeCategoryButtons').querySelectorAll('[data-recipe-category]').forEach(b => {
+        b.classList.toggle('active', b.dataset.recipeCategory === activeRecipeCategory);
+      });
+      renderRecipeItemsList();
+    });
+  });
+
+  const recipeEditModal = document.getElementById('recipeEditModal');
+  const recipeEditModalTitle = document.getElementById('recipeEditModalTitle');
+  const recipeEditModalBody = document.getElementById('recipeEditModalBody');
+  document.getElementById('closeRecipeEditModal').addEventListener('click', () => recipeEditModal.close());
+
+  let workingRecipeLines = [];
+
+  function recipeLineHTML(line, idx){
+    const ingredientOptions = allKnownIngredientNames().map(n => `<option value="${n}" ${line.name===n?'selected':''}>${n}</option>`).join('');
+    return `
+      <div class="recipe-row" data-idx="${idx}">
+        <select class="recipe-ingredient">
+          <option value="">Choose ingredient…</option>
+          ${ingredientOptions}
+        </select>
+        <input type="number" class="recipe-qty" min="1" step="1" value="${line.qty||1}">
+        <button class="btn danger remove-recipe-line">Remove</button>
+      </div>`;
+  }
+
+  function renderRecipeLines(){
+    recipeEditModalBody.querySelector('#recipeLinesContainer').innerHTML =
+      workingRecipeLines.map((line,idx) => recipeLineHTML(line, idx)).join('') ||
+      '<div class="empty">No ingredients yet — add one below.</div>';
+
+    recipeEditModalBody.querySelectorAll('.recipe-row').forEach(row => {
+      const idx = +row.dataset.idx;
+      row.querySelector('.recipe-ingredient').addEventListener('change', e => {
+        workingRecipeLines[idx].name = e.target.value;
+      });
+      row.querySelector('.recipe-qty').addEventListener('input', e => {
+        workingRecipeLines[idx].qty = Math.max(1, Number(e.target.value) || 1);
+      });
+      row.querySelector('.remove-recipe-line').addEventListener('click', () => {
+        workingRecipeLines.splice(idx,1);
+        renderRecipeLines();
+      });
+    });
+  }
+
+  function openRecipeEditModal(itemId){
+    const item = findAnyMenuItemById(itemId);
+    if(!item) return;
+
+    const currentRecipe = RECIPE_MAP[itemId] || {};
+    workingRecipeLines = Object.entries(currentRecipe).map(([name,qty]) => ({ name, qty }));
+    const hasOverride = !!recipeOverrides[itemId];
+
+    recipeEditModalTitle.textContent = `Recipe: ${item.name}`;
+    recipeEditModalBody.innerHTML = `
+      <div id="recipeLinesContainer" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <div class="toolrow" style="justify-content:flex-start;">
+        <button class="btn ghost" id="addRecipeLineBtn">+ Add Ingredient</button>
+      </div>
+      <div class="toolrow" style="justify-content:flex-end;">
+        ${hasOverride ? `<button class="btn ghost" id="resetRecipeBtn">Reset to Default</button>` : ''}
+        <button class="btn primary" id="saveRecipeBtn">Save Recipe</button>
+      </div>`;
+
+    renderRecipeLines();
+
+    recipeEditModalBody.querySelector('#addRecipeLineBtn').addEventListener('click', () => {
+      workingRecipeLines.push({ name:'', qty:1 });
+      renderRecipeLines();
+    });
+
+    recipeEditModalBody.querySelector('#saveRecipeBtn').addEventListener('click', () => {
+      const cleanLines = workingRecipeLines.filter(l => l.name && l.qty > 0);
+      if(!cleanLines.length){
+        showAdminAlert('Add at least one ingredient before saving, or use Reset to Default / just leave this item without a recipe.', 'Nothing to Save');
+        return;
+      }
+      const recipe = {};
+      cleanLines.forEach(l => { recipe[l.name] = l.qty; });
+
+      recipeOverrides[itemId] = recipe;
+      RECIPE_MAP[itemId] = recipe;
+      syncStateToServer();
+      recipeEditModal.close();
+      renderRecipeItemsList();
+    });
+
+    const resetBtn = recipeEditModalBody.querySelector('#resetRecipeBtn');
+    if(resetBtn){
+      resetBtn.addEventListener('click', () => {
+        delete recipeOverrides[itemId];
+        if(DEFAULT_RECIPE_MAP[itemId]) RECIPE_MAP[itemId] = DEFAULT_RECIPE_MAP[itemId];
+        else delete RECIPE_MAP[itemId];
+        syncStateToServer();
+        recipeEditModal.close();
+        renderRecipeItemsList();
+      });
+    }
+
+    recipeEditModal.showModal();
+  }
+
+
   loadStateFromServer();
 </script>
 </body>

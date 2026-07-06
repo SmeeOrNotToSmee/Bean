@@ -169,8 +169,42 @@ const MENU = {
   ],
 };
 
-// Shop-wide settings: discount tiers and delivery zone fees.
-// Editable from admin.html → Shop Settings. Defaults here are used until an override is saved.
+// Recipes: which ingredients (and how many) each menu item requires, used for the
+// "Required Ingredients" prep-sheet feature. Editable/extendable from admin.html →
+// Recipes & Ingredients. New items can be given a recipe there without needing code changes.
+const RECIPE_MAP = {
+  'bev-bean': {'Water':2,'Coffee bag':1},
+  'bev-capp': {'Coffee bag':1,'Water':1,'Milk':1},
+  'bev-iced': {'Coffee bag':1,'Sugar':1,'Milk':1,'Water':1},
+  'bev-esp' : {'Coffee bag':2,'Water':2},
+  'bev-choc': {'Milk':1,'Sugar':1,'Cocoa Powder':2},
+  'bev-matcha': {'Macha Powder':2,'Water':2},
+  'ex-ice-van'  : {'Ice Cream Cone':1,'Milk':1},
+  'ex-ice-choc' : {'Ice Cream Cone':1,'Milk':1,'Cocoa Powder':1},
+  'ex-ice-apple': {'Ice Cream Cone':1,'Milk':1,'Apple':1},
+  'ex-ice-banana':{'Ice Cream Cone':1,'Milk':1,'Banana':1},
+  'ex-ice-mango': {'Ice Cream Cone':1,'Milk':1,'Mango':1},
+  'ex-ice-pom'  : {'Ice Cream Cone':1,'Milk':1,'Pomegranate':1},
+  'ex-ice-water': {'Ice Cream Cone':1,'Milk':1,'Watermelon':1},
+  'ex-ice-lemon': {'Ice Cream Cone':1,'Milk':1,'Lemon':1},
+  'ex-ice-straw' : {'Ice Cream Cone':1,'Milk':1,'Strawberry':2},
+  'ex-ice-pine'  : {'Ice Cream Cone':1,'Pineapple':1,'Milk':1},
+  'ex-cake-berry': {'Flour':1,'Sugar':1,'Milk':1,'Egg':1,'Cherry':1,'Strawberry':1},
+  'ex-cake-lemon': {'Flour':1,'Sugar':1,'Milk':1,'Egg':1,'Lemon':2},
+  'ex-cake-choc' : {'Flour':1,'Sugar':1,'Milk':1,'Egg':1,'Cocoa Powder':2},
+  'ex-waffle-strawnana': {'Wonder Waffle':1,'Strawberry':1,'Banana':1},
+  'ex-waffle-cinapple' : {'Wonder Waffle':1,'Cinnamon':1,'Apple':1},
+  'ex-waffle-straw'    : {'Wonder Waffle':1,'Strawberry':1},
+  'ex-waffle-choc'     : {'Wonder Waffle':1,'Cocoa Powder':1},
+  'og-bag'             : {'Bag':1},
+  'ex-cocobar'         : {'Cocoa Powder':2,'Milk':1},
+};
+
+// Per-unit ingredient cost (not a menu price — used for the ingredient/cost list).
+// Admin-added ingredients (with or without a price) get merged in here too.
+const INGREDIENT_PRICES = {};
+
+
 const SHOP_SETTINGS = {
   discountTiers: [
     { pct: 10, label: 'State' },
