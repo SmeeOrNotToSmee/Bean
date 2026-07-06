@@ -29,6 +29,22 @@
     .small{font-size:.85rem;color:var(--muted)}
     label{display:block;margin-bottom:6px;font-size:.85rem;color:var(--muted)}
     input,select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--chip);color:var(--text);font-size:.95rem}
+    select{
+      appearance:none;-webkit-appearance:none;-moz-appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 8l5 5 5-5' stroke='%236b4f3b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;
+      background-position:right 12px center;
+      background-size:14px;
+      padding-right:34px;
+      cursor:pointer;
+      transition:border-color .15s ease, box-shadow .15s ease;
+    }
+    [data-theme="dark"] select{
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 8l5 5 5-5' stroke='%23efe9e2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    }
+    select:hover{border-color:var(--accent)}
+    select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(107,79,59,.18)}
+    select[multiple]{appearance:auto;-webkit-appearance:auto;-moz-appearance:auto;background-image:none;padding-right:12px;cursor:auto}
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:12px;border:1px solid var(--border);background:var(--chip);color:var(--text);cursor:pointer;font-weight:600;text-decoration:none;transition:background .15s ease,color .15s ease,border-color .15s ease,filter .15s ease}
     .btn.primary{background:linear-gradient(135deg,var(--brown),var(--tan));border:none;color:#fff}
     .btn.ghost{background:transparent}
@@ -71,6 +87,7 @@
     .component-row{border:1px solid var(--border);border-radius:10px;padding:10px;display:grid;gap:8px;background:var(--chip)}
     .component-row .top-fields{display:grid;grid-template-columns:110px 1fr 90px auto;gap:8px;align-items:center}
     .component-row select,.component-row input{padding:7px 9px;font-size:.85rem}
+    .component-row select{padding-right:30px;background-position:right 8px center;background-size:12px}
     .component-row .pool-note{font-size:.75rem;color:var(--muted)}
     .component-row select[multiple]{min-height:90px}
     .pool-checkboxes{display:flex;flex-wrap:wrap;gap:8px}
@@ -705,7 +722,7 @@
   const workingComponents = {};
 
   function blankComponent(){
-    return { type:'choice', category:'classic', qty:1, itemId:null, poolIds:[] };
+    return { type:'choice', category:'classic', qty:0, itemId:null, poolIds:[] };
   }
 
   function componentRowHTML(comp, idx){
@@ -726,7 +743,7 @@
           <select class="comp-category">
             ${Object.entries(CONTENT_CATEGORIES).map(([k,label]) => `<option value="${k}" ${comp.category===k?'selected':''}>${label}</option>`).join('')}
           </select>
-          <input type="number" class="comp-qty" min="1" step="1" value="${comp.qty||1}" placeholder="Qty">
+          <input type="number" class="comp-qty" min="0" step="1" value="${comp.qty ?? 0}" placeholder="Qty" style="${(!comp.qty || comp.qty<=0) ? 'border-color:#e63946;' : ''}">
           <button class="btn danger remove-component">Remove</button>
         </div>
         ${comp.type==='fixed' ? `
@@ -772,7 +789,8 @@
           renderRows();
         });
         row.querySelector('.comp-qty').addEventListener('input', e => {
-          comp.qty = Number(e.target.value) || 1;
+          comp.qty = Math.max(0, Number(e.target.value) || 0);
+          e.target.style.borderColor = comp.qty > 0 ? '' : '#e63946';
         });
         row.querySelector('.remove-component').addEventListener('click', () => {
           comps.splice(idx,1);
@@ -868,8 +886,15 @@
       const price = Number(bundleEditModalBody.querySelector('.edit-price').value);
       if(!name || !Number.isFinite(price) || price <= 0) return;
 
+      const comps = workingComponents[id] || [];
+      const hasZeroQty = comps.some(c => !c.qty || c.qty <= 0);
+      if(hasZeroQty){
+        showAdminAlert('Every component needs a quantity greater than 0 before you can save. Components still at 0 are outlined in red.', 'Set a Quantity');
+        return;
+      }
+
       const description = bundleEditModalBody.querySelector('.edit-description').value.trim();
-      const components = (workingComponents[id] || []).map(c => {
+      const components = comps.map(c => {
         const clean = { type:c.type, category:c.category, qty:Math.max(1, Number(c.qty)||1) };
         if(c.type==='fixed') clean.itemId = c.itemId;
         else if(Array.isArray(c.poolIds) && c.poolIds.length) clean.poolIds = c.poolIds;
