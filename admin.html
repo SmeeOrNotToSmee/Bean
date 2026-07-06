@@ -144,7 +144,7 @@
             <label for="itemDescription">Description (shown on the card)</label>
             <input id="itemDescription" type="text" placeholder="e.g. Choice of 5 drinks + 5 waffles">
           </div>
-          <div class="small">After adding this bundle, scroll down to the "🥐 Meals &amp; Bundles" section to set exactly what's included (choices, fixed items, and quantities).</div>
+          <div class="small">After you click "Add Item," the contents editor will open automatically so you can pick what's included (choices, fixed items, and quantities).</div>
         </div>
 
         <small class="warning" id="formWarning">⚠ Enter a name and a price greater than $0.</small>
@@ -575,6 +575,10 @@
     resetForm();
     renderCustomList();
     renderBundlesList();
+
+    if(category === 'bundles'){
+      openBundleEditModal(id);
+    }
   });
 
   // ---------- Theme (kept simple/independent on this page) ----------
