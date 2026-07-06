@@ -182,7 +182,9 @@
       <aside class="panel">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:16px 18px;border-bottom:1px solid var(--border);">
           <h2 id="checkoutPanelTitle" style="margin:0;padding:0;border:none;">Checkout</h2>
-          <div style="display:flex;align-items:center;gap:8px;">
+          <!-- Loyalty program hidden for now — design still being decided. Flip LOYALTY_ENABLED
+               to true in the script below and remove display:none here to bring it back. -->
+          <div style="display:none;align-items:center;gap:8px;">
             <input type="text" id="loyaltyCid" placeholder="Loyalty Num: CID" inputmode="numeric" maxlength="8" style="padding:7px 10px;border-radius:12px;border:1px solid var(--border);background:var(--chip);color:var(--text);font-size:.85rem;width:140px;">
             <div id="loyaltyStatus" class="muted" style="font-size:.78rem;"></div>
           </div>
@@ -1855,12 +1857,16 @@
     document.getElementById('closeExtras').addEventListener('click',()=>document.getElementById('extrasModal').close());
 
     // ---------- Loyalty (CID stamp card: 1 stamp per qualifying order, 5 stamps = free meal) ----------
+    // Hidden/disabled for now while the design is still being decided.
+    // To bring it back: set this to true, and remove display:none from the loyalty row's HTML above.
+    const LOYALTY_ENABLED = false;
     const loyaltyCidInput = document.getElementById('loyaltyCid');
     const loyaltyStatusEl = document.getElementById('loyaltyStatus');
     let loyaltyDebounce = null;
     let pendingRedeemCid = null;
 
     function getValidLoyaltyCid(){
+      if(!LOYALTY_ENABLED) return null;
       const val = (loyaltyCidInput.value || '').trim();
       return /^\d{1,8}$/.test(val) ? val : null;
     }
