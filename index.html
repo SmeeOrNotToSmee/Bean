@@ -455,6 +455,19 @@
       if(row.shop_settings && Array.isArray(row.shop_settings.deliveryZones)){
         SHOP_SETTINGS.deliveryZones = row.shop_settings.deliveryZones;
       }
+
+      // Recipes: admin-added/edited recipes override or extend RECIPE_MAP.
+      if(row.recipe_overrides && typeof row.recipe_overrides === 'object'){
+        Object.entries(row.recipe_overrides).forEach(([itemId, recipe]) => {
+          RECIPE_MAP[itemId] = recipe;
+        });
+      }
+      // Ingredients: admin-added ingredients extend INGREDIENT_PRICES.
+      if(Array.isArray(row.custom_ingredients)){
+        row.custom_ingredients.forEach(ing => {
+          if(ing && ing.name) INGREDIENT_PRICES[ing.name] = Number(ing.price) || 0;
+        });
+      }
     }catch(err){
       console.error('Failed to load shared menu state, falling back to defaults:', err);
       // Fall back to whatever menu-data.js ships with — the calculator still works,
@@ -505,33 +518,8 @@
     document.getElementById('discountButtons').innerHTML = buildDiscountButtonsHTML('discount-btn');
     document.getElementById('discountButtonsCat').innerHTML = buildDiscountButtonsHTML('discount-cat-btn');
 
-    const RECIPE_MAP = {
-      'bev-bean': {'Water':2,'Coffee bag':1},
-      'bev-capp': {'Coffee bag':1,'Water':1,'Milk':1},
-      'bev-iced': {'Coffee bag':1,'Sugar':1,'Milk':1,'Water':1},
-      'bev-esp' : {'Coffee bag':2,'Water':2},
-      'bev-choc': {'Milk':1,'Sugar':1,'Cocoa Powder':2},
-      'bev-matcha': {'Macha Powder':2,'Water':2},
-      'ex-ice-van'  : {'Ice Cream Cone':1,'Milk':1},
-      'ex-ice-choc' : {'Ice Cream Cone':1,'Milk':1,'Cocoa Powder':1},
-      'ex-ice-apple': {'Ice Cream Cone':1,'Milk':1,'Apple':1},
-      'ex-ice-banana':{'Ice Cream Cone':1,'Milk':1,'Banana':1},
-      'ex-ice-mango': {'Ice Cream Cone':1,'Milk':1,'Mango':1},
-      'ex-ice-pom'  : {'Ice Cream Cone':1,'Milk':1,'Pomegranate':1},
-      'ex-ice-water': {'Ice Cream Cone':1,'Milk':1,'Watermelon':1},
-      'ex-ice-lemon': {'Ice Cream Cone':1,'Milk':1,'Lemon':1},
-      'ex-ice-straw' : {'Ice Cream Cone':1,'Milk':1,'Strawberry':2},
-      'ex-ice-pine'  : {'Ice Cream Cone':1,'Pineapple':1,'Milk':1},
-      'ex-cake-berry': {'Flour':1,'Sugar':1,'Milk':1,'Egg':1,'Cherry':1,'Strawberry':1},
-      'ex-cake-lemon': {'Flour':1,'Sugar':1,'Milk':1,'Egg':1,'Lemon':2},
-      'ex-cake-choc' : {'Flour':1,'Sugar':1,'Milk':1,'Egg':1,'Cocoa Powder':2},
-      'ex-waffle-strawnana': {'Wonder Waffle':1,'Strawberry':1,'Banana':1},
-      'ex-waffle-cinapple' : {'Wonder Waffle':1,'Cinnamon':1,'Apple':1},
-      'ex-waffle-straw'    : {'Wonder Waffle':1,'Strawberry':1},
-      'ex-waffle-choc'     : {'Wonder Waffle':1,'Cocoa Powder':1},
-      'og-bag'             : {'Bag':1},
-      'ex-cocobar'         : {'Cocoa Powder':2,'Milk':1},
-    };
+    // RECIPE_MAP and INGREDIENT_PRICES now come from menu-data.js (shared with admin.html),
+    // merged below with any admin-added ingredients/recipes from the server.
 
     // Catering packages don't map directly onto a single RECIPE_MAP entry —
     // they're made up of a fixed set of regular menu items. This breaks each
@@ -555,9 +543,7 @@
       return Math.ceil(qty / yieldPer);
     }
 
-    // Per-unit ingredient cost (not a menu price — used for the ingredient/cost list).
-    const INGREDIENT_PRICES = {
-    };
+    // (INGREDIENT_PRICES comes from menu-data.js, merged with server data below.)
 
     const currency = n => `$${n.toFixed(2)}`;
 
